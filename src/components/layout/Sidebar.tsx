@@ -6,11 +6,11 @@ import { clearAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 
 const NAV = [
-  { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
+  { href: '/dashboard', label: 'Tu día', icon: '🏠' },
+  { href: '/empleos', label: 'Empleos / Prospectos', icon: '💼' },
   { href: '/crm', label: 'CRM', icon: '👥' },
-  { href: '/empleos', label: 'Empleos', icon: '💼' },
-  { href: '/cv', label: 'CV & Cartas', icon: '📄' },
-  { href: '/perfil', label: 'Perfil', icon: '👤' },
+  { href: '/marca', label: 'Marca', icon: '✨' },
+  { href: '/insights', label: 'Insights', icon: '📊' },
 ];
 
 export default function Sidebar() {

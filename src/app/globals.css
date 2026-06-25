@@ -19,6 +19,31 @@
   --color-brand-muted: #6B7280;
   --color-brand-surface: #F9FAFB;
   --color-brand-border: #E5E7EB;
+  --color-brand-gray: #f3f4f6;
+
+  /* Pirai purple scale */
+  --color-pirai-50: #f5f3ff;
+  --color-pirai-100: #ede9fe;
+  --color-pirai-200: #ddd6fe;
+  --color-pirai-300: #c4b5fd;
+  --color-pirai-400: #a78bfa;
+  --color-pirai-500: #8b5cf6;
+  --color-pirai-600: #7c3aed;
+  --color-pirai-700: #6d28d9;
+  --color-pirai-800: #5b21b6;
+  --color-pirai-900: #4c1d95;
+
+  /* Turquesa / cyan scale */
+  --color-turquesa-50: #ecfeff;
+  --color-turquesa-100: #cffafe;
+  --color-turquesa-200: #a5f3fc;
+  --color-turquesa-300: #67e8f9;
+  --color-turquesa-400: #22d3ee;
+  --color-turquesa-500: #06b6d4;
+  --color-turquesa-600: #0891b2;
+  --color-turquesa-700: #0e7490;
+  --color-turquesa-800: #155e75;
+  --color-turquesa-900: #164e63;
 }
 
 body {
