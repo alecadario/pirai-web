@@ -7,10 +7,11 @@ import { useRouter } from 'next/navigation';
 
 const NAV = [
   { href: '/dashboard', label: 'Tu día', icon: '🏠' },
-  { href: '/empleos', label: 'Empleos / Prospectos', icon: '💼' },
   { href: '/crm', label: 'CRM', icon: '👥' },
-  { href: '/marca', label: 'Marca', icon: '✨' },
+  { href: '/empleos', label: 'Empleos / Prospectos', icon: '💼' },
   { href: '/insights', label: 'Insights', icon: '📊' },
+  { href: '/cv', label: 'CV con IA', icon: '📄' },
+  { href: '/perfil', label: 'Mi perfil', icon: '👤' },
 ];
 
 export default function Sidebar() {
