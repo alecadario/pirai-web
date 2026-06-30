@@ -78,7 +78,7 @@ export default function LoginPage() {
             <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#2D3748', marginBottom: '8px', letterSpacing: '-0.5px' }}>
               Iniciar sesión
             </h2>
-            <p style={{ fontSize: '14px', color: '#A0AEC0', marginBottom: '36px' }}>
+            <p style={{ fontSize: '14px', color: '#2D3748', marginBottom: '36px' }}>
               Usá tu cuenta de Google para entrar
             </p>
 
@@ -100,16 +100,16 @@ export default function LoginPage() {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '28px 0' }}>
               <div style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
-              <span style={{ fontSize: '12px', color: '#CBD5E0', fontWeight: '500' }}>acceso seguro con OAuth</span>
+              <span style={{ fontSize: '12px', color: '#718096', fontWeight: '500' }}>acceso seguro con OAuth</span>
               <div style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
             </div>
 
-            <p style={{ fontSize: '12px', color: '#CBD5E0', textAlign: 'center', lineHeight: '1.7' }}>
+            <p style={{ fontSize: '12px', color: '#718096', textAlign: 'center', lineHeight: '1.7' }}>
               Al ingresar aceptás nuestros términos y política de privacidad.{' '}
               Tu información está segura y nunca la compartimos con terceros.
             </p>
 
-            <div style={{ marginTop: '48px', textAlign: 'center', fontSize: '13px', color: '#CBD5E0' }}>
+            <div style={{ marginTop: '48px', textAlign: 'center', fontSize: '13px', color: '#718096' }}>
               ¿Necesitás ayuda?{' '}
               <a href="mailto:pirai@alecadario.com" style={{ color: '#00A86B', textDecoration: 'none', fontWeight: '600' }}>
                 pirai@alecadario.com
