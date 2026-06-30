@@ -6,7 +6,7 @@ import { getUserId } from '@/lib/auth';
 import { api } from '@/lib/api';
 import {
   Loader2, Building2, Users, Calendar, Plus, Search,
-  ChevronRight, ExternalLink, Mail, Linkedin, X,
+  ChevronRight, ExternalLink, Mail, Link2, X,
 } from 'lucide-react';
 
 interface Empresa {
@@ -314,7 +314,7 @@ function ContactoDetail({ c, onClose }: { c: Contacto; onClose: () => void }) {
         )}
         {c.linkedin && (
           <a href={c.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-            <Linkedin className="w-4 h-4" /> LinkedIn
+            <Link2 className="w-4 h-4" /> LinkedIn
           </a>
         )}
         {c.stage && (
