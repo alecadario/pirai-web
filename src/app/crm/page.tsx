@@ -119,12 +119,31 @@ function CRMPageInner() {
     { id: 'networking' as Tab, label: 'Eventos', icon: Calendar, count: eventos.length },
   ];
 
-  const filteredEmpresas = empresas.filter(e =>
-    !search || e.name?.toLowerCase().includes(search.toLowerCase()) || e.industry?.toLowerCase().includes(search.toLowerCase())
-  );
-  const filteredContactos = contactos.filter(c =>
-    !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.empresaNombre?.toLowerCase().includes(search.toLowerCase())
-  );
+  const alpha = (a: string, b: string) => (a || '').localeCompare(b || '', 'es', { sensitivity: 'base' });
+
+  const sortedEmpresas = [...empresas]
+    .filter(e => !search || e.name?.toLowerCase().includes(search.toLowerCase()) || e.industry?.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => alpha(a.name, b.name));
+
+  const sortedContactos = [...contactos]
+    .filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.empresaNombre?.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => alpha(a.name, b.name));
+
+  const EMPRESA_GROUPS = [
+    { key: 'clientes', label: '🏆 Clientes', statuses: ['oferta', 'cliente', 'nuevo_cliente'] },
+    { key: 'entrevista', label: '🎯 En entrevista / reunión', statuses: ['entrevista'] },
+    { key: 'activas', label: '💬 Activas', statuses: ['contactado', 'en conversación', 'en_conversacion'] },
+    { key: 'investigando', label: '🔍 Sin prospectar', statuses: ['investigando'] },
+    { key: 'descartadas', label: '❌ Descartadas', statuses: ['descartado', 'sin respuesta', 'sin_respuesta'] },
+  ];
+
+  const empresaGroups = search
+    ? [{ key: 'all', label: '', empresas: sortedEmpresas }]
+    : EMPRESA_GROUPS.map(g => ({
+        key: g.key,
+        label: g.label,
+        empresas: sortedEmpresas.filter(e => g.statuses.includes(e.status ?? '')),
+      })).filter(g => g.empresas.length > 0);
 
   return (
     <AppShell>
@@ -173,21 +192,38 @@ function CRMPageInner() {
           </div>
 
           {/* List */}
-          <div className="flex-1 overflow-auto p-4 space-y-2">
+          <div className="flex-1 overflow-auto p-4">
             {loading ? (
               <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-[var(--color-pirai-500)]" /></div>
             ) : tab === 'empresas' ? (
-              filteredEmpresas.length === 0 ? (
+              sortedEmpresas.length === 0 ? (
                 <EmptyState label="Sin empresas aún" sub="Agregá la primera empresa a tu pipeline." />
-              ) : filteredEmpresas.map(emp => (
-                <EmpresaRow key={emp.id} emp={emp} active={(selected as Empresa)?.id === emp.id} onClick={() => setSelected(emp)} />
-              ))
+              ) : (
+                <div className="space-y-6">
+                  {empresaGroups.map(group => (
+                    <div key={group.key}>
+                      {group.label && (
+                        <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-2 px-1">{group.label}</p>
+                      )}
+                      <div className="space-y-2">
+                        {group.empresas.map(emp => (
+                          <EmpresaRow key={emp.id} emp={emp} active={(selected as Empresa)?.id === emp.id} onClick={() => setSelected(emp)} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : tab === 'contactos' ? (
-              filteredContactos.length === 0 ? (
+              sortedContactos.length === 0 ? (
                 <EmptyState label="Sin contactos aún" sub="Agregá contactos para hacer seguimiento." />
-              ) : filteredContactos.map(c => (
-                <ContactoRow key={c.id} c={c} active={(selected as Contacto)?.id === c.id} onClick={() => setSelected(c)} />
-              ))
+              ) : (
+                <div className="space-y-2">
+                  {sortedContactos.map(c => (
+                    <ContactoRow key={c.id} c={c} active={(selected as Contacto)?.id === c.id} onClick={() => setSelected(c)} />
+                  ))}
+                </div>
+              )
             ) : (
               eventos.length === 0 ? (
                 <EmptyState label="Sin eventos aún" sub="Registrá eventos de networking para hacer seguimiento." />
