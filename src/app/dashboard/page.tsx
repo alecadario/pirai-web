@@ -483,7 +483,10 @@ export default function DashboardPage() {
           {suggestedCompanies.length > 0 ? (
             <div className="grid grid-cols-2 gap-4">
               {suggestedCompanies.map((company, i) => (
-                <SuggestedCompanyCard key={i} company={company} userId={userId ?? ''} onAdded={(name) => setSuggestedCompanies(prev => prev.filter(c => c.name !== name))} />
+                <SuggestedCompanyCard key={i} company={company} userId={userId ?? ''} onAdded={(name) => {
+                  setSuggestedCompanies(prev => prev.filter(c => c.name !== name));
+                  loadData();
+                }} />
               ))}
             </div>
           ) : !suggestedLoading && !loading ? (
