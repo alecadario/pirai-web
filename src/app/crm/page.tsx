@@ -1,7 +1,7 @@
 'use client';
 
 import AppShell from '@/components/layout/AppShell';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getUserId } from '@/lib/auth';
 import { api } from '@/lib/api';
@@ -53,6 +53,10 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function CRMPage() {
+  return <Suspense><CRMPageInner /></Suspense>;
+}
+
+function CRMPageInner() {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>(() => {
     const t = searchParams.get('tab');
