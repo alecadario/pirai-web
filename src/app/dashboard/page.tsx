@@ -551,7 +551,7 @@ function SuggestedCompanyCard({ company, userId, onAdded }: { company: Suggested
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-[#2D3748] truncate">{company.name}</p>
         {company.industry && <p className="text-xs text-[#718096] truncate">{company.industry}</p>}
-        {company.reason && <p className="text-xs text-[#00A86B] mt-1 line-clamp-2">{company.reason}</p>}
+        {company.reason && <p className="text-xs text-[#00A86B] mt-1">{company.reason}</p>}
         <button
           onClick={handleAdd}
           disabled={adding || added}
