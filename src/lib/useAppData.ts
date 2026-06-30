@@ -81,15 +81,15 @@ export function useAppData() {
     try {
       const [profileRes, crmRes, quotaRes] = await Promise.allSettled([
         api.get<{ profile: ProfileData }>(`/api/user/profile?userId=${userId}`),
-        api.get<{ empresas: Empresa[]; contactos: Contacto[]; actividades: Actividad[] }>(`/api/crm/data?userId=${userId}`),
+        api.get<{ companies: Empresa[]; contacts: Contacto[]; activities: Actividad[] }>(`/api/bootstrap?userId=${userId}`),
         api.get<SearchQuota>(`/api/user/search-quota?userId=${userId}`),
       ]);
 
       if (profileRes.status === 'fulfilled') setProfileData(profileRes.value.profile ?? profileRes.value as unknown as ProfileData);
       if (crmRes.status === 'fulfilled') {
-        setEmpresas(crmRes.value.empresas ?? []);
-        setContactos(crmRes.value.contactos ?? []);
-        setActividades(crmRes.value.actividades ?? []);
+        setEmpresas(crmRes.value.companies ?? []);
+        setContactos(crmRes.value.contacts ?? []);
+        setActividades(crmRes.value.activities ?? []);
       }
       if (quotaRes.status === 'fulfilled') setSearchQuota(quotaRes.value);
     } catch (e) {

@@ -31,7 +31,7 @@ export default function InsightsPage() {
         empresas: { status?: string }[];
         contactos: { stage?: string }[];
         actividades: { fecha: string; respuesta?: boolean; tipo?: string }[];
-      }>(`/api/crm/data?userId=${userId}`);
+      }>(`/api/bootstrap?userId=${userId}`);
 
       const { empresas = [], contactos = [], actividades = [] } = res;
       const now = new Date();
