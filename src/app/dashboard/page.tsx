@@ -54,6 +54,8 @@ interface FocusAction {
   icon: string;
   action: string;
   tag: 'urgente' | 'crecimiento' | 'aprendé';
+  empresaId?: string;
+  contactoId?: string;
 }
 
 interface DailyFocus {
@@ -157,16 +159,16 @@ function getDailyFocus(
   // URGENTE
   if (totalActs > 0 && recentActs === 0) {
     if (topContact) {
-      actions.push({ label: contactLabel(topContact), icon: 'Send', action: 'go_crm', tag: 'urgente' });
+      actions.push({ label: contactLabel(topContact), icon: 'Send', action: 'go_crm', tag: 'urgente', contactoId: topContact.id });
     } else {
       actions.push({ label: 'Llevás 7+ días sin actividad. Reactivá hoy.', icon: 'Zap', action: 'go_crm', tag: 'urgente' });
     }
   } else if (topContact) {
-    actions.push({ label: contactLabel(topContact), icon: 'Send', action: 'go_crm', tag: 'urgente' });
+    actions.push({ label: contactLabel(topContact), icon: 'Send', action: 'go_crm', tag: 'urgente', contactoId: topContact.id });
   } else if (needFollowup.length > 0) {
-    actions.push({ label: `Follow-up a ${needFollowup[0].name}`, icon: 'Send', action: 'go_crm', tag: 'urgente' });
+    actions.push({ label: `Follow-up a ${needFollowup[0].name}`, icon: 'Send', action: 'go_crm', tag: 'urgente', empresaId: needFollowup[0].id });
   } else if (empresas.length > 0 && contactos.filter(c => c.stage !== 'descartado').length === 0) {
-    actions.push({ label: `Agregá contactos en ${empresas[0].name}`, icon: 'Users', action: 'go_crm', tag: 'urgente' });
+    actions.push({ label: `Agregá contactos en ${empresas[0].name}`, icon: 'Users', action: 'go_crm', tag: 'urgente', empresaId: empresas[0].id });
   } else {
     const actsToday = actividades.filter(a => a.fecha === today).length;
     if (actsToday > 0) {
@@ -179,15 +181,14 @@ function getDailyFocus(
   }
 
   // CRECIMIENTO
-  const urgenteAction = actions[0]?.action;
   const postulaciones = actividades.filter(a => a.tipo === 'postulacion').length;
   const contactosEnEntrevista = contactos.filter(c => c.stage === 'entrevista').length;
   const contactosGanados = contactos.filter(c => c.stage === 'nuevo_cliente').length;
 
-  if (secondContact && urgenteAction === 'go_crm' && topContact) {
-    actions.push({ label: contactLabel(secondContact), icon: 'Send', action: 'go_crm', tag: 'crecimiento' });
+  if (secondContact) {
+    actions.push({ label: contactLabel(secondContact), icon: 'Send', action: 'go_crm', tag: 'crecimiento', contactoId: secondContact.id });
   } else if (soloInvestigando.length > 0) {
-    actions.push({ label: `Contactá a ${soloInvestigando[0].name}`, icon: 'Target', action: 'go_crm', tag: 'crecimiento' });
+    actions.push({ label: `Contactá a ${soloInvestigando[0].name}`, icon: 'Target', action: 'go_crm', tag: 'crecimiento', empresaId: soloInvestigando[0].id });
   } else if (isBizUser) {
     if (contactosEnEntrevista > 0) {
       actions.push({ label: 'Tenés reuniones activas. Cerrá con una propuesta.', icon: 'Target', action: 'go_crm', tag: 'crecimiento' });
@@ -362,10 +363,14 @@ export default function DashboardPage() {
     ? getGradientStyle(focus.gradient)
     : 'from-[#00A86B] to-[#1BCDD1]';
 
-  function getActionHref(action: string): string {
-    if (action === 'go_empleos') return '/empleos';
-    if (action === 'go_marca') return '/marca';
-    return '/crm';
+  function getActionHref(action: FocusAction): string {
+    if (action.action === 'go_empleos') return '/empleos';
+    if (action.action === 'go_marca') return '/marca';
+    const params = new URLSearchParams();
+    if (action.contactoId) { params.set('tab', 'contactos'); params.set('contactoId', action.contactoId); }
+    else if (action.empresaId) { params.set('tab', 'empresas'); params.set('empresaId', action.empresaId); }
+    const qs = params.toString();
+    return qs ? `/crm?${qs}` : '/crm';
   }
 
   return (
@@ -424,7 +429,7 @@ export default function DashboardPage() {
               {focus.actions.map((action, i) => (
                 <Link
                   key={i}
-                  href={getActionHref(action.action)}
+                  href={getActionHref(action)}
                   className={`flex items-center gap-4 rounded-2xl p-4 transition-all hover:shadow-sm ${TAG_STYLES[action.tag]}`}
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm text-[#2D3748]">

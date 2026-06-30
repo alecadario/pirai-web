@@ -2,6 +2,7 @@
 
 import AppShell from '@/components/layout/AppShell';
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { getUserId } from '@/lib/auth';
 import { api } from '@/lib/api';
 import {
@@ -52,7 +53,11 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function CRMPage() {
-  const [tab, setTab] = useState<Tab>('empresas');
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = searchParams.get('tab');
+    return (t === 'contactos' || t === 'networking') ? t : 'empresas';
+  });
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contactos, setContactos] = useState<Contacto[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
@@ -89,6 +94,20 @@ export default function CRMPage() {
   }, [userId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-select item from URL params after data loads
+  useEffect(() => {
+    if (loading) return;
+    const empresaId = searchParams.get('empresaId');
+    const contactoId = searchParams.get('contactoId');
+    if (empresaId) {
+      const emp = empresas.find(e => e.id === empresaId);
+      if (emp) { setTab('empresas'); setSelected(emp); }
+    } else if (contactoId) {
+      const c = contactos.find(c => c.id === contactoId);
+      if (c) { setTab('contactos'); setSelected(c); }
+    }
+  }, [loading, empresas, contactos, searchParams]);
 
   const TABS = [
     { id: 'empresas' as Tab, label: 'Empresas', icon: Building2, count: empresas.length },
