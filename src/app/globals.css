@@ -22,7 +22,7 @@
   --color-brand-border: #E2E8F0;
   --color-brand-surface: #F2F4F7;
 
-  --font-sans: var(--font-geist-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plus-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
