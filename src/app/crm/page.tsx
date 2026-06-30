@@ -990,7 +990,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpd
   const [showAllActs, setShowAllActs] = useState(false);
 
   // Message generator
-  const [messageType, setMessageType] = useState('mensaje_linkedin');
+  const [messageType, setMessageType] = useState('primer_contacto');
   const [userContext, setUserContext] = useState('');
   const [generatingMsg, setGeneratingMsg] = useState(false);
   const [generatedMsg, setGeneratedMsg] = useState('');
@@ -1250,10 +1250,12 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpd
               onChange={e => setMessageType(e.target.value)}
               className="w-full border border-[var(--color-brand-border)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-white"
             >
-              <option value="mensaje_linkedin">LinkedIn</option>
+              <option value="primer_contacto">Primer contacto</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="followup">Follow-up</option>
               <option value="email">Email</option>
               <option value="whatsapp">WhatsApp</option>
-              <option value="seguimiento">Seguimiento</option>
+              <option value="agradecimiento">Agradecimiento</option>
             </select>
           </div>
           <div>
