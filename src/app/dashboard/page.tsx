@@ -483,17 +483,7 @@ export default function DashboardPage() {
           {suggestedCompanies.length > 0 ? (
             <div className="grid grid-cols-2 gap-4">
               {suggestedCompanies.map((company, i) => (
-                <div key={i} className="bg-white rounded-2xl p-4 border border-[#E2E8F0] flex items-start gap-3 hover:shadow-sm transition-shadow">
-                  <CompanyLogo name={company.name} logo_url={company.logo_url} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#2D3748] truncate">{company.name}</p>
-                    {company.industry && <p className="text-xs text-[#718096] truncate">{company.industry}</p>}
-                    {company.reason && <p className="text-xs text-[#00A86B] mt-1 line-clamp-2">{company.reason}</p>}
-                  </div>
-                  <Link href="/crm" className="flex-shrink-0 p-1.5 rounded-lg hover:bg-[#F2F4F7] transition-colors">
-                    <ChevronRight className="w-4 h-4 text-[#718096]" />
-                  </Link>
-                </div>
+                <SuggestedCompanyCard key={i} company={company} userId={userId ?? ''} onAdded={(name) => setSuggestedCompanies(prev => prev.filter(c => c.name !== name))} />
               ))}
             </div>
           ) : !suggestedLoading && !loading ? (
@@ -527,6 +517,54 @@ export default function DashboardPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function SuggestedCompanyCard({ company, userId, onAdded }: { company: SuggestedCompany; userId: string; onAdded: (name: string) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  async function handleAdd() {
+    if (!userId || adding || added) return;
+    setAdding(true);
+    try {
+      const res = await fetch(`${BASE}/api/import-empresas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          rows: [{ name: company.name, industry: company.industry ?? '', country: company.country ?? '' }],
+        }),
+      });
+      if (res.ok) {
+        setAdded(true);
+        setTimeout(() => onAdded(company.name), 800);
+      }
+    } catch { /* silent */ } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl p-4 border border-[#E2E8F0] flex items-start gap-3 hover:shadow-sm transition-shadow">
+      <CompanyLogo name={company.name} logo_url={company.logo_url} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[#2D3748] truncate">{company.name}</p>
+        {company.industry && <p className="text-xs text-[#718096] truncate">{company.industry}</p>}
+        {company.reason && <p className="text-xs text-[#00A86B] mt-1 line-clamp-2">{company.reason}</p>}
+        <button
+          onClick={handleAdd}
+          disabled={adding || added}
+          className={`mt-2 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition-all ${
+            added
+              ? 'bg-[#00A86B]/10 text-[#00A86B] cursor-default'
+              : 'bg-[#F2F4F7] text-[#2D3748] hover:bg-[#00A86B]/10 hover:text-[#00A86B]'
+          }`}
+        >
+          {adding ? <Loader2 className="w-3 h-3 animate-spin" /> : added ? '✓ Agregada' : '+ Agregar al CRM'}
+        </button>
+      </div>
+    </div>
   );
 }
 
