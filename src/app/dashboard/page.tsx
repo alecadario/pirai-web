@@ -484,14 +484,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 gap-4">
               {suggestedCompanies.map((company, i) => (
                 <div key={i} className="bg-white rounded-2xl p-4 border border-[#E2E8F0] flex items-start gap-3 hover:shadow-sm transition-shadow">
-                  {company.logo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={company.logo_url} alt={company.name} className="w-10 h-10 rounded-xl object-contain border border-[#E2E8F0] flex-shrink-0" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-xl bg-[#F2F4F7] flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-5 h-5 text-[#718096]" />
-                    </div>
-                  )}
+                  <CompanyLogo name={company.name} logo_url={company.logo_url} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[#2D3748] truncate">{company.name}</p>
                     {company.industry && <p className="text-xs text-[#718096] truncate">{company.industry}</p>}
@@ -534,6 +527,26 @@ export default function DashboardPage() {
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function CompanyLogo({ name, logo_url }: { name: string; logo_url?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (logo_url && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logo_url}
+        alt={name}
+        className="w-10 h-10 rounded-xl object-contain border border-[#E2E8F0] flex-shrink-0"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <div className="w-10 h-10 rounded-xl bg-[#F2F4F7] flex items-center justify-center flex-shrink-0">
+      <Building2 className="w-5 h-5 text-[#718096]" />
+    </div>
   );
 }
 
