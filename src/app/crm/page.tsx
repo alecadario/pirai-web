@@ -663,7 +663,8 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
   const [addedContacts, setAddedContacts] = useState<Set<string>>(new Set());
 
   const handleSearchContacts = async () => {
-    const domain = emp.website || emp.name;
+    const rawDomain = emp.website || (emp.name?.toLowerCase().replace(/\s+/g, '') + '.com');
+    const domain = rawDomain.trim().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
     if (!domain) return;
     setSearchingContacts(true);
     setContactSearchDone(false);
@@ -674,7 +675,7 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain, userId }),
       }).then(r => r.json());
-      setFoundContacts(Array.isArray(res.contacts) ? res.contacts : Array.isArray(res) ? res : []);
+      setFoundContacts(res.contacts ?? (Array.isArray(res) ? res : []));
     } catch {
       setFoundContacts([]);
     } finally {
@@ -897,7 +898,7 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
             </>
           )}
           {contactSearchDone && foundContacts.length === 0 && (
-            <p className="px-3 py-2 text-[10px] text-gray-400 border-t border-[var(--color-brand-border)]">No se encontraron contactos para esta empresa.</p>
+            <p className="px-3 py-2 text-[10px] text-gray-400 border-t border-[var(--color-brand-border)]">No se encontraron contactos nuevos para agregar.</p>
           )}
         </div>
       )}
