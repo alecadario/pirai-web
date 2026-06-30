@@ -23,10 +23,10 @@ interface Empresa {
 interface Contacto {
   id: string;
   name: string;
-  role?: string;
+  title?: string;
   email?: string;
-  linkedin?: string;
-  company_name?: string;
+  linkedinUrl?: string;
+  empresaNombre?: string;
   stage?: string;
 }
 
@@ -66,12 +66,12 @@ export default function CRMPage() {
     setLoading(true);
     try {
       const res = await api.get<{
-        empresas: Empresa[];
-        contactos: Contacto[];
+        companies: Empresa[];
+        contacts: Contacto[];
         events?: Evento[];
-      }>(`/api/crm/data?userId=${userId}`);
-      setEmpresas(res.empresas ?? []);
-      setContactos(res.contactos ?? []);
+      }>(`/api/bootstrap?userId=${userId}`);
+      setEmpresas(res.companies ?? []);
+      setContactos(res.contacts ?? []);
       setEventos(res.events ?? []);
     } finally {
       setLoading(false);
@@ -90,7 +90,7 @@ export default function CRMPage() {
     !search || e.name?.toLowerCase().includes(search.toLowerCase()) || e.industry?.toLowerCase().includes(search.toLowerCase())
   );
   const filteredContactos = contactos.filter(c =>
-    !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.company_name?.toLowerCase().includes(search.toLowerCase())
+    !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.empresaNombre?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -222,7 +222,7 @@ function ContactoRow({ c, active, onClick }: { c: Contacto; active: boolean; onC
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-[var(--color-brand-dark)] truncate">{c.name}</p>
-        <p className="text-xs text-[var(--color-brand-muted)] truncate">{[c.role, c.company_name].filter(Boolean).join(' · ')}</p>
+        <p className="text-xs text-[var(--color-brand-muted)] truncate">{[c.title, c.empresaNombre].filter(Boolean).join(' · ')}</p>
       </div>
       <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
     </button>
@@ -300,7 +300,7 @@ function ContactoDetail({ c, onClose }: { c: Contacto; onClose: () => void }) {
           </div>
           <div>
             <h2 className="font-bold text-[var(--color-brand-dark)]">{c.name}</h2>
-            <p className="text-xs text-[var(--color-brand-muted)]">{[c.role, c.company_name].filter(Boolean).join(' · ')}</p>
+            <p className="text-xs text-[var(--color-brand-muted)]">{[c.title, c.empresaNombre].filter(Boolean).join(' · ')}</p>
           </div>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
@@ -312,8 +312,8 @@ function ContactoDetail({ c, onClose }: { c: Contacto; onClose: () => void }) {
             <Mail className="w-4 h-4" /> {c.email}
           </a>
         )}
-        {c.linkedin && (
-          <a href={c.linkedin} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+        {c.linkedinUrl && (
+          <a href={c.linkedinUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
             <Link2 className="w-4 h-4" /> LinkedIn
           </a>
         )}

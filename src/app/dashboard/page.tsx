@@ -35,14 +35,14 @@ export default function DashboardPage() {
     try {
       const [profileRes, crmRes] = await Promise.allSettled([
         api.get<Record<string, unknown>>(`/api/user/profile?userId=${userId}`),
-        api.get<{ empresas: unknown[]; contactos: unknown[]; actividades: { fecha: string; respuesta?: boolean }[] }>(`/api/crm/data?userId=${userId}`),
+        api.get<{ companies: unknown[]; contacts: unknown[]; activities: { fecha: string; respuesta?: boolean }[] }>(`/api/bootstrap?userId=${userId}`),
       ]);
       if (profileRes.status === 'fulfilled') {
         const v = profileRes.value;
         setProfile((v.profile ?? v) as ProfileData);
       }
       if (crmRes.status === 'fulfilled') {
-        const { empresas = [], contactos = [], actividades = [] } = crmRes.value;
+        const { companies: empresas = [], contacts: contactos = [], activities: actividades = [] } = crmRes.value;
         const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
         setStats({
           totalEmpresas: empresas.length,
