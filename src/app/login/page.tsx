@@ -14,59 +14,111 @@ export default function LoginPage() {
   }, [router]);
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff', padding: '24px' }}>
-      <div style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-        {/* Logo */}
-        <img
-          src={`${API_BASE}/icon-192x192.png`}
-          alt="Piraí"
-          style={{ width: '80px', height: '80px', borderRadius: '20px', margin: '0 auto 20px', display: 'block' }}
-          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-        />
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif !important; }
+        .login-root { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .google-btn:hover { background: #009660 !important; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,168,107,0.35) !important; }
+        .google-btn { transition: all 0.2s ease; }
+        .feature-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #F2F4F7; }
+        .feature-item:last-child { border-bottom: none; }
+      `}</style>
+      <div className="login-root" style={{ minHeight: '100vh', display: 'flex', background: '#F2F4F7', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
-        {/* Wordmark */}
-        <p style={{ fontSize: '28px', fontWeight: '800', color: '#2D3748', margin: '0 0 12px', letterSpacing: '-0.5px' }}>
-          Piraí
-        </p>
+        {/* Left — branding */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '80px 72px', background: '#fff', borderRight: '1px solid #E2E8F0' }}>
+          <div style={{ maxWidth: '480px' }}>
+            {/* Logo + name */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '64px' }}>
+              <img
+                src={`${API_BASE}/icon-192x192.png`}
+                alt="Piraí"
+                style={{ width: '48px', height: '48px', borderRadius: '14px' }}
+                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+              <span style={{ fontSize: '24px', fontWeight: '800', color: '#2D3748', letterSpacing: '-0.5px' }}>Piraí</span>
+            </div>
 
-        {/* Tagline */}
-        <p style={{ fontSize: '17px', fontWeight: '600', color: '#2D3748', margin: '0 0 12px', lineHeight: '1.4' }}>
-          Tu sistema para generar oportunidades profesionales.
-        </p>
-        <p style={{ fontSize: '14px', color: '#A0AEC0', margin: '0 0 40px', lineHeight: '1.7' }}>
-          Organizá tu búsqueda laboral, gestioná contactos clave y hacé seguimiento de cada oportunidad — todo desde un solo lugar.
-        </p>
+            {/* Headline */}
+            <h1 style={{ fontSize: '40px', fontWeight: '800', color: '#2D3748', lineHeight: '1.15', letterSpacing: '-1px', marginBottom: '20px' }}>
+              Tu sistema para{' '}
+              <span style={{ color: '#00A86B' }}>generar oportunidades</span>{' '}
+              profesionales.
+            </h1>
+            <p style={{ fontSize: '16px', color: '#718096', lineHeight: '1.75', marginBottom: '48px' }}>
+              Organizá tu búsqueda laboral, gestioná contactos clave y hacé seguimiento de cada oportunidad — todo desde un solo lugar.
+            </p>
 
-        {/* Google button */}
-        <a
-          href={`${API_BASE}/api/google/connect?platform=web_app`}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
-            width: '100%', padding: '16px 20px', borderRadius: '16px',
-            background: '#00A86B', color: '#fff',
-            fontSize: '16px', fontWeight: '700',
-            textDecoration: 'none', boxSizing: 'border-box',
-            transition: 'background 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#009660'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#00A86B'; }}
-        >
-          <GoogleIconWhite />
-          Iniciar sesión con Google
-        </a>
+            {/* Features */}
+            <div>
+              {[
+                { icon: '🎯', title: 'CRM laboral', desc: 'Seguí cada empresa y contacto' },
+                { icon: '✨', title: 'IA integrada', desc: 'CV y cartas generadas al instante' },
+                { icon: '🔍', title: 'Empleos remotos', desc: 'Búsqueda en tiempo real' },
+              ].map(f => (
+                <div key={f.title} className="feature-item">
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#E6F7F1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                    {f.icon}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: '#2D3748' }}>{f.title}</div>
+                    <div style={{ fontSize: '13px', color: '#A0AEC0' }}>{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-        {/* Footer */}
-        <div style={{ marginTop: '40px', color: '#CBD5E0', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ margin: 0 }}>
-            ¿Necesitás ayuda? Escribinos a{' '}
-            <a href="mailto:pirai@alecadario.com" style={{ color: '#00A86B', textDecoration: 'underline' }}>
-              pirai@alecadario.com
+        {/* Right — login */}
+        <div style={{ width: '460px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 56px', background: '#F2F4F7' }}>
+          <div style={{ width: '100%' }}>
+            <h2 style={{ fontSize: '26px', fontWeight: '800', color: '#2D3748', marginBottom: '8px', letterSpacing: '-0.5px' }}>
+              Iniciar sesión
+            </h2>
+            <p style={{ fontSize: '14px', color: '#A0AEC0', marginBottom: '36px' }}>
+              Usá tu cuenta de Google para entrar
+            </p>
+
+            <a
+              href={`${API_BASE}/api/google/connect?platform=web_app`}
+              className="google-btn"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px',
+                width: '100%', padding: '16px 24px', borderRadius: '14px',
+                background: '#00A86B', color: '#fff',
+                fontSize: '15px', fontWeight: '700',
+                textDecoration: 'none',
+                boxShadow: '0 4px 16px rgba(0,168,107,0.25)',
+              }}
+            >
+              <GoogleIconWhite />
+              Continuar con Google
             </a>
-          </p>
-          <a href="/privacy" style={{ color: '#CBD5E0', textDecoration: 'underline' }}>Política de privacidad</a>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '28px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
+              <span style={{ fontSize: '12px', color: '#CBD5E0', fontWeight: '500' }}>acceso seguro con OAuth</span>
+              <div style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
+            </div>
+
+            <p style={{ fontSize: '12px', color: '#CBD5E0', textAlign: 'center', lineHeight: '1.7' }}>
+              Al ingresar aceptás nuestros términos y política de privacidad.{' '}
+              Tu información está segura y nunca la compartimos con terceros.
+            </p>
+
+            <div style={{ marginTop: '48px', textAlign: 'center', fontSize: '13px', color: '#CBD5E0' }}>
+              ¿Necesitás ayuda?{' '}
+              <a href="mailto:pirai@alecadario.com" style={{ color: '#00A86B', textDecoration: 'none', fontWeight: '600' }}>
+                pirai@alecadario.com
+              </a>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
