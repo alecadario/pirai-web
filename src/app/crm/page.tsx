@@ -836,14 +836,22 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
         )}
       </div>
 
-      {/* Contactos expandible */}
+      {/* Contactos expandible + buscar */}
       {showContactos && (
         <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
-          <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)]">
+          <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center justify-between">
             <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Contactos ({contactosEmpresa.length})</p>
+            <button
+              onClick={handleSearchContacts}
+              disabled={searchingContacts}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors"
+            >
+              {searchingContacts ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
+              {searchingContacts ? 'Buscando...' : 'Buscar contactos'}
+            </button>
           </div>
-          {contactosEmpresa.length === 0 ? (
-            <p className="p-4 text-xs text-gray-400 text-center">Sin contactos aún</p>
+          {contactosEmpresa.length === 0 && !contactSearchDone ? (
+            <p className="p-4 text-xs text-gray-400 text-center">Sin contactos aún. Usá el botón para buscar.</p>
           ) : (
             <div className="divide-y divide-[var(--color-brand-border)]">
               {contactosEmpresa.map(c => (
@@ -856,6 +864,40 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
                 </div>
               ))}
             </div>
+          )}
+          {/* Found contacts from search */}
+          {foundContacts.length > 0 && (
+            <>
+              <div className="px-3 py-1.5 bg-[var(--color-pirai-50)] border-t border-[var(--color-pirai-100)]">
+                <p className="text-[10px] font-semibold text-[var(--color-pirai-700)]">Encontrados ({foundContacts.length})</p>
+              </div>
+              <div className="divide-y divide-[var(--color-brand-border)]">
+                {foundContacts.map((fc, i) => (
+                  <div key={i} className="px-3 py-2.5 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[var(--color-brand-dark)] truncate">{fc.name}</p>
+                      {fc.title && <p className="text-xs text-gray-400 truncate">{fc.title}</p>}
+                      {fc.email && <p className="text-[10px] text-[var(--color-pirai-600)] truncate">{fc.email}</p>}
+                    </div>
+                    {addedContacts.has(fc.name) ? (
+                      <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-0.5"><CheckCircle className="w-3 h-3" /> Agregado</span>
+                    ) : (
+                      <button
+                        onClick={() => handleAddFoundContact(fc)}
+                        disabled={addingContact === fc.name}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)] disabled:opacity-60 transition-colors shrink-0"
+                      >
+                        {addingContact === fc.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                        Agregar
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {contactSearchDone && foundContacts.length === 0 && (
+            <p className="px-3 py-2 text-[10px] text-gray-400 border-t border-[var(--color-brand-border)]">No se encontraron contactos para esta empresa.</p>
           )}
         </div>
       )}
@@ -891,55 +933,6 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
           )}
         </div>
       )}
-
-      {/* Contact search */}
-      <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
-        <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <UserPlus className="w-3.5 h-3.5 text-[var(--color-pirai-500)]" />
-            <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Buscar contactos</p>
-          </div>
-          <button
-            onClick={handleSearchContacts}
-            disabled={searchingContacts}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors"
-          >
-            {searchingContacts ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-            {searchingContacts ? 'Buscando...' : 'Buscar en LinkedIn'}
-          </button>
-        </div>
-        {contactSearchDone && foundContacts.length === 0 && (
-          <p className="p-4 text-xs text-gray-400 text-center">No se encontraron contactos para esta empresa.</p>
-        )}
-        {foundContacts.length > 0 && (
-          <div className="divide-y divide-[var(--color-brand-border)]">
-            {foundContacts.map((fc, i) => (
-              <div key={i} className="px-3 py-2.5 flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--color-brand-dark)] truncate">{fc.name}</p>
-                  {fc.title && <p className="text-xs text-gray-400 truncate">{fc.title}</p>}
-                  {fc.email && <p className="text-[10px] text-[var(--color-pirai-600)] truncate">{fc.email}</p>}
-                </div>
-                {addedContacts.has(fc.name) ? (
-                  <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-0.5"><CheckCircle className="w-3 h-3" /> Agregado</span>
-                ) : (
-                  <button
-                    onClick={() => handleAddFoundContact(fc)}
-                    disabled={addingContact === fc.name}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)] disabled:opacity-60 transition-colors shrink-0"
-                  >
-                    {addingContact === fc.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                    Agregar
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {!contactSearchDone && !searchingContacts && (
-          <p className="p-3 text-[10px] text-gray-400">Busca contactos de {emp.name} en LinkedIn usando nuestra IA.</p>
-        )}
-      </div>
 
       {/* Edit / Delete buttons */}
       <div className="flex gap-2 pt-1">
