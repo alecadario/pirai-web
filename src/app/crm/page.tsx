@@ -179,6 +179,7 @@ function CRMPageInner() {
   const [selected, setSelected] = useState<Empresa | Contacto | null>(null);
   const [empresaFilter, setEmpresaFilter] = useState<EmpresaFilter>('todas');
   const [eventFilter, setEventFilter] = useState<EventFilter>('todos');
+  const [userName, setUserName] = useState('');
   const userId = getUserId();
   const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
 
@@ -191,10 +192,13 @@ function CRMPageInner() {
       try {
         const ur = await fetch(`${BASE}/api/user-record?userId=${encodeURIComponent(userId)}`).then(r => r.json());
         const fields = ur?.record?.fields ?? {};
+        if (fields.name) setUserName(fields.name);
+        else if (fields.full_name) setUserName(fields.full_name);
         if (fields.onboarding_answers) {
           const a = JSON.parse(fields.onboarding_answers);
           diagnosis = a.diagnosis ?? '';
           stage = a.stage ?? '';
+          if (!fields.name && a.name) setUserName(a.name);
         }
       } catch {}
       const res = await fetch(
@@ -420,6 +424,7 @@ function CRMPageInner() {
                 actividades={actividades}
                 BASE={BASE}
                 userId={userId ?? ''}
+                userName={userName}
                 onClose={() => setSelected(null)}
                 onUpdate={(updated) => {
                   setContactos(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
@@ -973,12 +978,13 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
 
 // ─── Contacto Detail Panel ────────────────────────────────────────────────────
 
-function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpdate, onDelete }: {
+function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, onClose, onUpdate, onDelete }: {
   c: Contacto;
   empresas: Empresa[];
   actividades: Actividad[];
   BASE: string;
   userId: string;
+  userName: string;
   onClose: () => void;
   onUpdate: (c: Contacto) => void;
   onDelete: (id: string) => void;
@@ -1048,7 +1054,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpd
           userId, contactName: c.name, contactTitle: c.title, contactStage: c.stage,
           empresaName: empresa?.name ?? c.empresaNombre, empresaIndustry: empresa?.industry,
           eventSource: c.eventSource, activities: contactActivities,
-          messageType, userContext,
+          messageType, userContext, senderName: userName,
         }),
       }).then(r => r.json());
       setGeneratedMsg(res.message ?? res.text ?? '');
@@ -1300,7 +1306,13 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpd
                 )}
                 {c.email && gmailConnected && (
                   <button
-                    onClick={() => { setComposeSubject(''); setComposeBody(generatedMsg); setReplyToThread(undefined); setShowCompose(true); }}
+                    onClick={() => {
+                      const defaultSubject = empresa?.name ? `Contacto - ${empresa.name}` : `Hola ${c.name.split(' ')[0]}`;
+                      setComposeSubject(defaultSubject);
+                      setComposeBody(generatedMsg);
+                      setReplyToThread(undefined);
+                      setShowCompose(true);
+                    }}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] text-[var(--color-pirai-700)] hover:bg-[var(--color-pirai-100)] transition-colors"
                   >
                     <Mail className="w-3 h-3" /> Enviar por email
@@ -1330,7 +1342,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpd
             </div>
             {gmailConnected && (
               <button
-                onClick={() => { setShowCompose(true); setComposeSubject(''); setComposeBody(generatedMsg); setReplyToThread(undefined); }}
+                onClick={() => { setShowCompose(true); setComposeSubject(empresa?.name ? `Contacto - ${empresa.name}` : `Hola ${c.name.split(' ')[0]}`); setComposeBody(generatedMsg); setReplyToThread(undefined); }}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] transition-colors"
               >
                 <Plus className="w-3 h-3" /> Redactar
