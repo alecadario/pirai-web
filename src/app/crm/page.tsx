@@ -8,6 +8,7 @@ import {
   Loader2, Building2, Users, Calendar, Plus, Search,
   ChevronRight, ExternalLink, Mail, Link2, X, Phone,
   Pencil, Trash2, CheckCircle, Activity, ChevronDown,
+  MessageSquare, Send, Inbox, Copy, UserPlus, Zap,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -655,6 +656,45 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
   const [deleting, setDeleting] = useState(false);
   const [showAllActs, setShowAllActs] = useState(false);
   const [showContactos, setShowContactos] = useState(false);
+  const [searchingContacts, setSearchingContacts] = useState(false);
+  const [foundContacts, setFoundContacts] = useState<Array<{ name: string; title?: string; email?: string; linkedinUrl?: string }>>([]);
+  const [contactSearchDone, setContactSearchDone] = useState(false);
+  const [addingContact, setAddingContact] = useState<string | null>(null);
+  const [addedContacts, setAddedContacts] = useState<Set<string>>(new Set());
+
+  const handleSearchContacts = async () => {
+    const domain = emp.website || emp.name;
+    if (!domain) return;
+    setSearchingContacts(true);
+    setContactSearchDone(false);
+    setFoundContacts([]);
+    try {
+      const res = await fetch(`${BASE}/api/contacts/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, userId }),
+      }).then(r => r.json());
+      setFoundContacts(Array.isArray(res.contacts) ? res.contacts : Array.isArray(res) ? res : []);
+    } catch {
+      setFoundContacts([]);
+    } finally {
+      setSearchingContacts(false);
+      setContactSearchDone(true);
+    }
+  };
+
+  const handleAddFoundContact = async (contact: { name: string; title?: string; email?: string; linkedinUrl?: string }) => {
+    setAddingContact(contact.name);
+    try {
+      await fetch(`${BASE}/api/contacts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name: contact.name, title: contact.title, email: contact.email, linkedinUrl: contact.linkedinUrl, empresaId: emp.id, empresaNombre: emp.name }),
+      });
+      setAddedContacts(prev => new Set([...prev, contact.name]));
+    } catch {}
+    finally { setAddingContact(null); }
+  };
 
   const contactosEmpresa = contactos.filter(c => c.empresaId === emp.id);
   const actividadesEmpresa = actividades
@@ -852,6 +892,55 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
         </div>
       )}
 
+      {/* Contact search */}
+      <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
+        <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <UserPlus className="w-3.5 h-3.5 text-[var(--color-pirai-500)]" />
+            <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Buscar contactos</p>
+          </div>
+          <button
+            onClick={handleSearchContacts}
+            disabled={searchingContacts}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors"
+          >
+            {searchingContacts ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+            {searchingContacts ? 'Buscando...' : 'Buscar en LinkedIn'}
+          </button>
+        </div>
+        {contactSearchDone && foundContacts.length === 0 && (
+          <p className="p-4 text-xs text-gray-400 text-center">No se encontraron contactos para esta empresa.</p>
+        )}
+        {foundContacts.length > 0 && (
+          <div className="divide-y divide-[var(--color-brand-border)]">
+            {foundContacts.map((fc, i) => (
+              <div key={i} className="px-3 py-2.5 flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[var(--color-brand-dark)] truncate">{fc.name}</p>
+                  {fc.title && <p className="text-xs text-gray-400 truncate">{fc.title}</p>}
+                  {fc.email && <p className="text-[10px] text-[var(--color-pirai-600)] truncate">{fc.email}</p>}
+                </div>
+                {addedContacts.has(fc.name) ? (
+                  <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-0.5"><CheckCircle className="w-3 h-3" /> Agregado</span>
+                ) : (
+                  <button
+                    onClick={() => handleAddFoundContact(fc)}
+                    disabled={addingContact === fc.name}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)] disabled:opacity-60 transition-colors shrink-0"
+                  >
+                    {addingContact === fc.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    Agregar
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {!contactSearchDone && !searchingContacts && (
+          <p className="p-3 text-[10px] text-gray-400">Busca contactos de {emp.name} en LinkedIn usando nuestra IA.</p>
+        )}
+      </div>
+
       {/* Edit / Delete buttons */}
       <div className="flex gap-2 pt-1">
         <button
@@ -907,10 +996,115 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpd
   const [deleting, setDeleting] = useState(false);
   const [showAllActs, setShowAllActs] = useState(false);
 
+  // Message generator
+  const [messageType, setMessageType] = useState('mensaje_linkedin');
+  const [userContext, setUserContext] = useState('');
+  const [generatingMsg, setGeneratingMsg] = useState(false);
+  const [generatedMsg, setGeneratedMsg] = useState('');
+  const [msgCopied, setMsgCopied] = useState(false);
+
+  // Gmail
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+  const [gmailMessages, setGmailMessages] = useState<Array<{ id: string; subject?: string; from?: string; date?: string; snippet?: string; body?: string; threadId?: string }>>([]);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  const [showCompose, setShowCompose] = useState(false);
+  const [composeSubject, setComposeSubject] = useState('');
+  const [composeBody, setComposeBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [replyToThread, setReplyToThread] = useState<string | undefined>(undefined);
+  const [expandedMsg, setExpandedMsg] = useState<string | null>(null);
+
   const empresa = empresas.find(e => e.id === c.empresaId);
   const actividadesContacto = actividades
     .filter(a => a.contactoId === c.id)
     .sort((a, b) => (b.createdAt || b.fecha || '').localeCompare(a.createdAt || a.fecha || ''));
+
+  // Check Gmail on mount
+  useEffect(() => {
+    if (!userId || !c.email) { setGmailConnected(false); return; }
+    fetch(`${BASE}/api/gmail-messages?userId=${encodeURIComponent(userId)}&maxResults=1`)
+      .then(r => r.json())
+      .then(res => {
+        setGmailConnected(!res.error && !res.authRequired);
+        if (!res.error && !res.authRequired && c.email) loadGmailMessages();
+      })
+      .catch(() => setGmailConnected(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c.id]);
+
+  const loadGmailMessages = async () => {
+    if (!c.email) return;
+    setGmailLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/gmail-messages?userId=${encodeURIComponent(userId)}&contactEmail=${encodeURIComponent(c.email)}`).then(r => r.json());
+      setGmailMessages(Array.isArray(res.messages) ? res.messages : Array.isArray(res) ? res : []);
+    } catch { setGmailMessages([]); }
+    finally { setGmailLoading(false); }
+  };
+
+  const handleGenerateMessage = async () => {
+    setGeneratingMsg(true);
+    setGeneratedMsg('');
+    try {
+      const contactActivities = actividades.filter(a => a.contactoId === c.id).slice(0, 5).map(a => ({ tipo: a.tipo, fecha: a.fecha, notas: a.notas, respuesta: a.respuesta }));
+      const res = await fetch(`${BASE}/api/generate-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId, contactName: c.name, contactTitle: c.title, contactStage: c.stage,
+          empresaName: empresa?.name ?? c.empresaNombre, empresaIndustry: empresa?.industry,
+          eventSource: c.eventSource, activities: contactActivities,
+          messageType, userContext,
+        }),
+      }).then(r => r.json());
+      setGeneratedMsg(res.message ?? res.text ?? '');
+    } catch { setGeneratedMsg(''); }
+    finally { setGeneratingMsg(false); }
+  };
+
+  const handleCopyMessage = async () => {
+    if (!generatedMsg) return;
+    await navigator.clipboard.writeText(generatedMsg);
+    setMsgCopied(true);
+    setTimeout(() => setMsgCopied(false), 2000);
+  };
+
+  const handleLinkedInAction = async () => {
+    if (generatedMsg) await navigator.clipboard.writeText(generatedMsg);
+    if (c.linkedinUrl) window.open(c.linkedinUrl, '_blank');
+    // register activity
+    try {
+      await fetch(`${BASE}/api/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, tipo: 'mensaje_linkedin', contactoId: c.id, empresaId: c.empresaId, fecha: new Date().toISOString().split('T')[0], notas: generatedMsg.slice(0, 200) }),
+      });
+    } catch {}
+  };
+
+  const handleSendEmail = async () => {
+    if (!c.email) return;
+    setSendingEmail(true);
+    try {
+      await fetch(`${BASE}/api/gmail-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, to: c.email, subject: composeSubject, body: composeBody, threadId: replyToThread }),
+      });
+      // register email activity
+      await fetch(`${BASE}/api/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, tipo: 'email', contactoId: c.id, empresaId: c.empresaId, fecha: new Date().toISOString().split('T')[0], notas: `${composeSubject}: ${composeBody.slice(0, 100)}` }),
+      });
+      setShowCompose(false);
+      setComposeSubject('');
+      setComposeBody('');
+      setReplyToThread(undefined);
+      loadGmailMessages();
+    } catch {}
+    finally { setSendingEmail(false); }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -1045,6 +1239,193 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpd
             <button onClick={() => setShowAllActs(true)} className="w-full py-2 text-xs font-semibold text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] transition-colors">
               Ver más ({actividadesContacto.length - 5} más)
             </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Message Generator ── */}
+      <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
+        <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center gap-1.5">
+          <Zap className="w-3.5 h-3.5 text-[var(--color-pirai-500)]" />
+          <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Generador de mensaje</p>
+        </div>
+        <div className="p-3 space-y-2.5">
+          <div>
+            <label className="text-[10px] text-[var(--color-brand-muted)] mb-1 block">Tipo de mensaje</label>
+            <select
+              value={messageType}
+              onChange={e => setMessageType(e.target.value)}
+              className="w-full border border-[var(--color-brand-border)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-white"
+            >
+              <option value="mensaje_linkedin">LinkedIn</option>
+              <option value="email">Email</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="seguimiento">Seguimiento</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-[var(--color-brand-muted)] mb-1 block">Contexto adicional (opcional)</label>
+            <textarea
+              value={userContext}
+              onChange={e => setUserContext(e.target.value)}
+              rows={2}
+              placeholder="Ej: vi que publicaron sobre X, quiero mencionar Y..."
+              className="w-full border border-[var(--color-brand-border)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
+            />
+          </div>
+          <button
+            onClick={handleGenerateMessage}
+            disabled={generatingMsg}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors"
+          >
+            {generatingMsg ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+            {generatingMsg ? 'Generando...' : 'Generar mensaje'}
+          </button>
+
+          {generatedMsg && (
+            <div className="space-y-2">
+              <div className="bg-[var(--color-brand-gray)] rounded-lg p-3 text-xs text-[var(--color-brand-dark)] leading-relaxed whitespace-pre-wrap max-h-40 overflow-auto border border-[var(--color-brand-border)]">
+                {generatedMsg}
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                <button
+                  onClick={handleCopyMessage}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-white border border-[var(--color-brand-border)] text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <Copy className="w-3 h-3" /> {msgCopied ? 'Copiado!' : 'Copiar'}
+                </button>
+                {c.linkedinUrl && (
+                  <button
+                    onClick={handleLinkedInAction}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    <Link2 className="w-3 h-3" /> Enviar por LinkedIn
+                  </button>
+                )}
+                {c.email && gmailConnected && (
+                  <button
+                    onClick={() => { setComposeSubject(''); setComposeBody(generatedMsg); setReplyToThread(undefined); setShowCompose(true); }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] text-[var(--color-pirai-700)] hover:bg-[var(--color-pirai-100)] transition-colors"
+                  >
+                    <Mail className="w-3 h-3" /> Enviar por email
+                  </button>
+                )}
+                {c.email && !gmailConnected && (
+                  <a
+                    href={`mailto:${c.email}?body=${encodeURIComponent(generatedMsg)}`}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] text-[var(--color-pirai-700)] hover:bg-[var(--color-pirai-100)] transition-colors"
+                  >
+                    <Mail className="w-3 h-3" /> Abrir email
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Gmail Section ── */}
+      {c.email && (
+        <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
+          <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Inbox className="w-3.5 h-3.5 text-[var(--color-turquesa-500)]" />
+              <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Emails con {c.name.split(' ')[0]}</p>
+            </div>
+            {gmailConnected && (
+              <button
+                onClick={() => { setShowCompose(true); setComposeSubject(''); setComposeBody(generatedMsg); setReplyToThread(undefined); }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Redactar
+              </button>
+            )}
+          </div>
+
+          {gmailConnected === null && (
+            <div className="p-3 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-gray-400" /></div>
+          )}
+
+          {gmailConnected === false && (
+            <div className="p-4 text-center space-y-2">
+              <p className="text-xs text-gray-500">Conectá Gmail para ver y enviar emails directamente desde Piraí.</p>
+              <a
+                href={`${BASE}/api/google/gmail-connect?platform=web_app&userId=${encodeURIComponent(userId)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5" /> Conectar Gmail
+              </a>
+            </div>
+          )}
+
+          {gmailConnected === true && (
+            <>
+              {showCompose && (
+                <div className="p-3 border-b border-[var(--color-brand-border)] space-y-2 bg-white">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-[var(--color-brand-dark)]">Nuevo email para {c.email}</p>
+                    <button onClick={() => setShowCompose(false)} className="p-0.5 hover:bg-gray-100 rounded"><X className="w-3.5 h-3.5 text-gray-400" /></button>
+                  </div>
+                  <input
+                    value={composeSubject}
+                    onChange={e => setComposeSubject(e.target.value)}
+                    placeholder="Asunto"
+                    className="w-full border border-[var(--color-brand-border)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+                  />
+                  <textarea
+                    value={composeBody}
+                    onChange={e => setComposeBody(e.target.value)}
+                    rows={5}
+                    placeholder="Cuerpo del email..."
+                    className="w-full border border-[var(--color-brand-border)] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowCompose(false)} className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-[var(--color-brand-border)] text-gray-600 hover:bg-gray-50">Cancelar</button>
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail || !composeSubject || !composeBody}
+                      className="flex-1 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 flex items-center justify-center gap-1"
+                    >
+                      {sendingEmail ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                      {sendingEmail ? 'Enviando...' : 'Enviar'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {gmailLoading ? (
+                <div className="p-3 flex justify-center"><Loader2 className="w-4 h-4 animate-spin text-gray-400" /></div>
+              ) : gmailMessages.length === 0 ? (
+                <p className="p-4 text-xs text-gray-400 text-center">Sin emails con {c.email} aún.</p>
+              ) : (
+                <div className="divide-y divide-[var(--color-brand-border)] max-h-56 overflow-auto">
+                  {gmailMessages.map(msg => (
+                    <div key={msg.id} className="px-3 py-2.5 cursor-pointer hover:bg-[var(--color-brand-gray)] transition-colors" onClick={() => setExpandedMsg(expandedMsg === msg.id ? null : msg.id)}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-[var(--color-brand-dark)] truncate">{msg.subject || '(sin asunto)'}</p>
+                          <p className="text-[10px] text-gray-400 truncate">{msg.from}</p>
+                        </div>
+                        <span className="text-[10px] text-gray-400 shrink-0">{msg.date ? new Date(msg.date).toLocaleDateString('es') : ''}</span>
+                      </div>
+                      {expandedMsg === msg.id && msg.snippet && (
+                        <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">{msg.snippet}</p>
+                      )}
+                      {expandedMsg === msg.id && (
+                        <div className="mt-1.5 flex gap-1.5">
+                          <button
+                            onClick={e => { e.stopPropagation(); setComposeSubject(`Re: ${msg.subject ?? ''}`); setComposeBody(''); setReplyToThread(msg.threadId); setShowCompose(true); }}
+                            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)] transition-colors"
+                          >
+                            <MessageSquare className="w-3 h-3" /> Responder
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
