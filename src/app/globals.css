@@ -1,41 +1,34 @@
 @import "tailwindcss";
 
-:root {
-  --background: #F2F4F7;
-  --foreground: #2D3748;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-
-  /* Pirai brand — same as mobile app */
-  --color-pirai-50:  #E6F7F1;
+@theme {
+  --color-pirai-50: #E6F7F1;
   --color-pirai-100: #B3E8D5;
   --color-pirai-200: #80D9B9;
+  --color-pirai-300: #4DCB9D;
+  --color-pirai-400: #26BF88;
   --color-pirai-500: #00A86B;
   --color-pirai-600: #009660;
   --color-pirai-700: #007A4E;
 
-  --color-turquesa-50:  #E7FAFB;
+  --color-turquesa-50: #E7FAFB;
   --color-turquesa-100: #B5F1F5;
+  --color-turquesa-400: #2CD5E3;
   --color-turquesa-500: #1BCDD1;
   --color-turquesa-600: #17B8BC;
 
-  --color-brand-dark:   #2D3748;
-  --color-brand-gray:   #F2F4F7;
-  --color-brand-white:  #FFFFFF;
+  --color-brand-dark: #2D3748;
+  --color-brand-gray: #F2F4F7;
+  --color-brand-muted: #718096;
   --color-brand-border: #E2E8F0;
-  --color-brand-muted:  #718096;
   --color-brand-surface: #F2F4F7;
+
+  --font-sans: var(--font-geist-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  background: #F2F4F7;
+  color: #2D3748;
+  font-family: var(--font-sans);
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }

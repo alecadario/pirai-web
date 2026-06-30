@@ -13,38 +13,48 @@ export default function LoginPage() {
     if (isAuthenticated()) router.replace('/dashboard');
   }, [router]);
 
-  function handleGoogleLogin() {
-    window.location.href = `${API_BASE}/api/google/connect?platform=web_app`;
-  }
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-brand-surface)]">
-      <div className="w-full max-w-sm">
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F2F4F7' }}>
+      <div style={{ width: '100%', maxWidth: '380px', padding: '0 16px' }}>
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[var(--color-pirai-500)] mb-4">
-            <img src={`${API_BASE}/icon-192x192.png`} alt="Piraí" className="w-10 h-10 rounded-xl" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '16px', background: '#00A86B', marginBottom: '16px' }}>
+            <img
+              src={`${API_BASE}/icon-192x192.png`}
+              alt="Piraí"
+              style={{ width: '44px', height: '44px', borderRadius: '10px' }}
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
           </div>
-          <h1 className="text-3xl font-bold text-[var(--color-brand-dark)]">Piraí</h1>
-          <p className="text-sm text-[var(--color-brand-muted)] mt-1">Tu copiloto de carrera</p>
+          <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#2D3748', margin: '0 0 4px' }}>Piraí</h1>
+          <p style={{ fontSize: '14px', color: '#718096', margin: 0 }}>Tu copiloto de carrera</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-brand-border)] p-8">
-          <h2 className="text-lg font-semibold text-[var(--color-brand-dark)] mb-1 text-center">Bienvenido/a</h2>
-          <p className="text-sm text-[var(--color-brand-muted)] text-center mb-6">
+        <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #E2E8F0', padding: '32px', boxShadow: '0 1px 8px rgba(45,55,72,0.08)' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#2D3748', textAlign: 'center', margin: '0 0 6px' }}>Bienvenido/a</h2>
+          <p style={{ fontSize: '14px', color: '#718096', textAlign: 'center', margin: '0 0 24px' }}>
             Ingresá con tu cuenta de Google para continuar
           </p>
 
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-[var(--color-brand-border)] rounded-xl px-4 py-3 text-sm font-semibold text-[var(--color-brand-dark)] hover:border-[var(--color-pirai-500)] hover:text-[var(--color-pirai-600)] transition-all"
+          <a
+            href={`${API_BASE}/api/google/connect?platform=web_app`}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+              width: '100%', padding: '12px 16px', borderRadius: '12px',
+              border: '2px solid #E2E8F0', background: '#fff',
+              fontSize: '14px', fontWeight: '600', color: '#2D3748',
+              cursor: 'pointer', textDecoration: 'none', boxSizing: 'border-box',
+              transition: 'border-color 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = '#00A86B')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = '#E2E8F0')}
           >
             <GoogleIcon />
             Continuar con Google
-          </button>
+          </a>
 
-          <p className="text-xs text-[var(--color-brand-muted)] text-center mt-6 leading-relaxed">
+          <p style={{ fontSize: '12px', color: '#A0AEC0', textAlign: 'center', marginTop: '20px', lineHeight: '1.5' }}>
             Al ingresar aceptás nuestros términos y política de privacidad.
             Tu información está segura y nunca la compartimos.
           </p>
