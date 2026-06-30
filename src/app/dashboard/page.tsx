@@ -328,15 +328,18 @@ export default function DashboardPage() {
   }, [userId]);
 
   const loadSuggestedCompanies = useCallback(async () => {
-    if (!userId || empresas.length === 0) return;
+    if (!userId) return;
     setSuggestedLoading(true);
     try {
       const alreadyInPipeline = empresas.map(e => e.name).join(',');
+      const pipelineNamesLower = new Set(empresas.map(e => e.name.toLowerCase().trim()));
       const res = await fetch(
-        `${BASE}/api/suggested-companies?userId=${encodeURIComponent(userId)}&alreadyInPipeline=${encodeURIComponent(alreadyInPipeline)}`
+        `${BASE}/api/suggested-companies?userId=${encodeURIComponent(userId)}&alreadyInPipeline=${encodeURIComponent(alreadyInPipeline)}&bust=${encodeURIComponent(alreadyInPipeline.length)}`
       ).then(r => r.json());
-      if (Array.isArray(res?.suggestions)) setSuggestedCompanies(res.suggestions.slice(0, 4));
-      else if (Array.isArray(res)) setSuggestedCompanies(res.slice(0, 4));
+      const raw: SuggestedCompany[] = Array.isArray(res?.suggestions) ? res.suggestions : Array.isArray(res) ? res : [];
+      // Client-side safety filter: remove any suggestion whose name matches a company already in the CRM
+      const filtered = raw.filter(s => !pipelineNamesLower.has(s.name?.toLowerCase()?.trim() ?? ''));
+      setSuggestedCompanies(filtered.slice(0, 4));
     } catch { /* silent */ } finally { setSuggestedLoading(false); }
   }, [userId, empresas]);
 
