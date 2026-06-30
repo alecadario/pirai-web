@@ -682,7 +682,13 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain, userId }),
       }).then(r => r.json());
-      setFoundContacts(res.contacts ?? (Array.isArray(res) ? res : []));
+      const raw: Array<{ first_name?: string; last_name?: string; name?: string; email?: string; title?: string; linkedin_url?: string; linkedinUrl?: string }> = res.contacts ?? (Array.isArray(res) ? res : []);
+      setFoundContacts(raw.map(c => ({
+        name: c.name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email || '',
+        title: c.title,
+        email: c.email,
+        linkedinUrl: c.linkedinUrl || c.linkedin_url,
+      })).filter(c => c.name));
     } catch {
       setFoundContacts([]);
     } finally {
