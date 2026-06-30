@@ -416,6 +416,7 @@ function CRMPageInner() {
                   setSelected(updated);
                 }}
                 onDelete={(id) => { setEmpresas(prev => prev.filter(e => e.id !== id)); setSelected(null); }}
+                onSelectContact={(c) => { setTab('contactos'); setSelected(c); }}
               />
             ) : tab === 'contactos' ? (
               <ContactoDetail
@@ -644,7 +645,7 @@ function ContactoRow({ c, active, onClick }: { c: Contacto; active: boolean; onC
 
 // ─── Empresa Detail Panel ─────────────────────────────────────────────────────
 
-function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onUpdate, onDelete }: {
+function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onUpdate, onDelete, onSelectContact }: {
   emp: Empresa;
   contactos: Contacto[];
   actividades: Actividad[];
@@ -653,6 +654,7 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
   onClose: () => void;
   onUpdate: (emp: Empresa) => void;
   onDelete: (id: string) => void;
+  onSelectContact: (c: Contacto) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: emp.name, industry: emp.industry ?? '', status: emp.status ?? '', priority: emp.priority ?? '', notes: emp.notes ?? '', objetivo: emp.objetivo ?? '', website: emp.website ?? '', country: emp.country ?? '' });
@@ -692,12 +694,12 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
   const handleAddFoundContact = async (contact: { name: string; title?: string; email?: string; linkedinUrl?: string }) => {
     setAddingContact(contact.name);
     try {
-      await fetch(`${BASE}/api/contacts`, {
+      const res = await fetch(`${BASE}/api/crm/contacto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, name: contact.name, title: contact.title, email: contact.email, linkedinUrl: contact.linkedinUrl, empresaId: emp.id, empresaNombre: emp.name }),
+        body: JSON.stringify({ userId, name: contact.name, title: contact.title, email: contact.email, linkedinUrl: contact.linkedinUrl, empresaId: emp.id }),
       });
-      setAddedContacts(prev => new Set([...prev, contact.name]));
+      if (res.ok) setAddedContacts(prev => new Set([...prev, contact.name]));
     } catch {}
     finally { setAddingContact(null); }
   };
@@ -861,13 +863,16 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
           ) : (
             <div className="divide-y divide-[var(--color-brand-border)]">
               {contactosEmpresa.map(c => (
-                <div key={c.id} className="px-3 py-2.5 flex items-center justify-between">
+                <button key={c.id} onClick={() => onSelectContact(c)} className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-[var(--color-pirai-50)] transition-colors text-left">
                   <div>
                     <p className="text-sm font-medium text-[var(--color-brand-dark)]">{c.name}</p>
                     {c.title && <p className="text-xs text-gray-400">{c.title}</p>}
                   </div>
-                  {c.stage && <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]">{STAGE_LABELS[c.stage] ?? c.stage}</Badge>}
-                </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {c.stage && <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]">{STAGE_LABELS[c.stage] ?? c.stage}</Badge>}
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+                  </div>
+                </button>
               ))}
             </div>
           )}
