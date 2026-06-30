@@ -334,8 +334,8 @@ export default function DashboardPage() {
       const res = await fetch(
         `${BASE}/api/suggested-companies?userId=${encodeURIComponent(userId)}&alreadyInPipeline=${encodeURIComponent(alreadyInPipeline)}`
       ).then(r => r.json());
-      if (Array.isArray(res)) setSuggestedCompanies(res.slice(0, 4));
-      else if (Array.isArray(res?.companies)) setSuggestedCompanies(res.companies.slice(0, 4));
+      if (Array.isArray(res?.suggestions)) setSuggestedCompanies(res.suggestions.slice(0, 4));
+      else if (Array.isArray(res)) setSuggestedCompanies(res.slice(0, 4));
     } catch { /* silent */ } finally { setSuggestedLoading(false); }
   }, [userId, empresas]);
 
