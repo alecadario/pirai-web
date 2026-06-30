@@ -4,21 +4,29 @@ import AppShell from '@/components/layout/AppShell';
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getUserId } from '@/lib/auth';
-import { api } from '@/lib/api';
 import {
   Loader2, Building2, Users, Calendar, Plus, Search,
-  ChevronRight, ExternalLink, Mail, Link2, X,
+  ChevronRight, ExternalLink, Mail, Link2, X, Phone,
+  Pencil, Trash2, CheckCircle, Activity, ChevronDown,
 } from 'lucide-react';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Empresa {
   id: string;
   name: string;
   industry?: string;
   status?: string;
+  priority?: string;
   country?: string;
+  city?: string;
   logo_url?: string;
   website?: string;
   notes?: string;
+  objetivo?: string;
+  numContactos?: number;
+  numActividades?: number;
+  ultimaActividad?: string;
 }
 
 interface Contacto {
@@ -27,20 +35,48 @@ interface Contacto {
   title?: string;
   email?: string;
   linkedinUrl?: string;
+  phone?: string;
+  empresaId?: string | null;
   empresaNombre?: string;
   stage?: string;
+  notes?: string;
+  eventSource?: string;
 }
 
 interface Evento {
   id: string;
   name: string;
   date?: string;
+  end_date?: string;
+  time?: string;
+  duration?: number;
   type?: string;
   city?: string;
   country?: string;
+  location?: string;
+  details?: string;
+  contactGoal?: number;
+  contactsMet?: number;
+}
+
+interface Actividad {
+  id: string;
+  tipo: string;
+  fecha: string;
+  notas?: string;
+  respuesta?: boolean;
+  empresaId?: string | null;
+  empresaNombre?: string;
+  contactoId?: string | null;
+  contactoNombre?: string;
+  createdAt?: string;
 }
 
 type Tab = 'empresas' | 'contactos' | 'networking';
+type EventFilter = 'todos' | 'hoy' | 'proximos' | 'pasados';
+type EmpresaFilter = 'todas' | 'activas' | 'sin_prospectar' | 'descartadas';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
   investigando: 'bg-blue-100 text-blue-700',
@@ -50,11 +86,82 @@ const STATUS_COLORS: Record<string, string> = {
   descartado: 'bg-red-100 text-red-500',
   entrevista: 'bg-purple-100 text-purple-700',
   oferta: 'bg-orange-100 text-orange-700',
+  cliente: 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]',
 };
+
+const PRIORITY_COLORS: Record<string, string> = {
+  alta: 'bg-red-100 text-red-700',
+  media: 'bg-yellow-100 text-yellow-700',
+  baja: 'bg-gray-100 text-gray-500',
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  nuevo: 'Nuevo',
+  sin_contactar: 'Sin contactar',
+  primer_contacto: '1er contacto',
+  seguimiento: 'Seguimiento',
+  respuesta_recibida: 'Respuesta recibida',
+  en_conversacion: 'En conv.',
+  'en conversación': 'En conv.',
+  entrevista: 'Entrevista',
+  oferta: 'Oferta',
+  nuevo_cliente: 'Cliente',
+  descartado: 'Descartado',
+};
+
+const ACTIVITY_EMOJIS: Record<string, string> = {
+  postulacion: '📝',
+  mensaje_linkedin: '💼',
+  email: '📧',
+  whatsapp: '💬',
+  llamada: '📞',
+  seguimiento: '🔄',
+  networking: '👥',
+  entrevista: '🎤',
+  demo: '🎯',
+  propuesta: '📋',
+  otro: '📌',
+};
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  postulacion: 'Postulación',
+  mensaje_linkedin: 'LinkedIn',
+  email: 'Email',
+  whatsapp: 'WhatsApp',
+  llamada: 'Llamada',
+  seguimiento: 'Seguimiento',
+  networking: 'Networking',
+  entrevista: 'Entrevista',
+  demo: 'Demo',
+  propuesta: 'Propuesta',
+  otro: 'Otro',
+};
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  presencial: 'Presencial',
+  online: 'Online',
+  conferencia: 'Presencial',
+  meetup: 'Presencial',
+  feria: 'Presencial',
+  workshop: 'Workshop',
+  otro: 'Otro',
+};
+
+const EMPRESA_GROUPS = [
+  { key: 'clientes', label: '🏆 Clientes', statuses: ['oferta', 'cliente', 'nuevo_cliente'] },
+  { key: 'entrevista', label: '🎯 En entrevista / reunión', statuses: ['entrevista'] },
+  { key: 'activas', label: '💬 Activas', statuses: ['contactado', 'en conversación', 'en_conversacion'] },
+  { key: 'investigando', label: '🔍 Sin prospectar', statuses: ['investigando'] },
+  { key: 'descartadas', label: '❌ Descartadas', statuses: ['descartado', 'sin respuesta', 'sin_respuesta'] },
+];
+
+// ─── Page entry with Suspense ─────────────────────────────────────────────────
 
 export default function CRMPage() {
   return <Suspense><CRMPageInner /></Suspense>;
 }
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 function CRMPageInner() {
   const searchParams = useSearchParams();
@@ -65,16 +172,19 @@ function CRMPageInner() {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contactos, setContactos] = useState<Contacto[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [actividades, setActividades] = useState<Actividad[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Empresa | Contacto | null>(null);
+  const [empresaFilter, setEmpresaFilter] = useState<EmpresaFilter>('todas');
+  const [eventFilter, setEventFilter] = useState<EventFilter>('todos');
   const userId = getUserId();
+  const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
 
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
       let diagnosis = '';
       let stage = '';
       try {
@@ -91,11 +201,12 @@ function CRMPageInner() {
       ).then(r => r.json());
       setEmpresas(res.companies ?? []);
       setContactos(res.contacts ?? []);
-      setEventos(res.events ?? []);
+      setEventos((res.events ?? []).sort((a: Evento, b: Evento) => (a.date || '').localeCompare(b.date || '')));
+      setActividades(res.activities ?? []);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, BASE]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -121,34 +232,52 @@ function CRMPageInner() {
 
   const alpha = (a: string, b: string) => (a || '').localeCompare(b || '', 'es', { sensitivity: 'base' });
 
-  const sortedEmpresas = [...empresas]
+  // ── Empresa list logic ──
+  const filteredEmpresas = [...empresas]
     .filter(e => !search || e.name?.toLowerCase().includes(search.toLowerCase()) || e.industry?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => alpha(a.name, b.name));
 
+  const applyEmpresaFilter = (list: Empresa[]) => {
+    if (empresaFilter === 'activas') return list.filter(e => ['contactado', 'en conversación', 'entrevista'].includes(e.status ?? '') || (e.status === 'investigando' && (e.numActividades ?? 0) > 0));
+    if (empresaFilter === 'sin_prospectar') return list.filter(e => e.status === 'investigando' && (e.numActividades ?? 0) === 0);
+    if (empresaFilter === 'descartadas') return list.filter(e => ['descartado', 'sin respuesta'].includes(e.status ?? ''));
+    return list;
+  };
+
+  const displayedEmpresas = applyEmpresaFilter(filteredEmpresas);
+
+  const empresaGroups = search
+    ? [{ key: 'all', label: '', empresas: displayedEmpresas }]
+    : EMPRESA_GROUPS.map(g => ({
+        key: g.key,
+        label: g.label,
+        empresas: displayedEmpresas.filter(e => g.statuses.includes(e.status ?? '')),
+      })).filter(g => g.empresas.length > 0);
+
+  // ── Contacto list logic ──
   const sortedContactos = [...contactos]
     .filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.empresaNombre?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => alpha(a.name, b.name));
 
-  const EMPRESA_GROUPS = [
-    { key: 'clientes', label: '🏆 Clientes', statuses: ['oferta', 'cliente', 'nuevo_cliente'] },
-    { key: 'entrevista', label: '🎯 En entrevista / reunión', statuses: ['entrevista'] },
-    { key: 'activas', label: '💬 Activas', statuses: ['contactado', 'en conversación', 'en_conversacion'] },
-    { key: 'investigando', label: '🔍 Sin prospectar', statuses: ['investigando'] },
-    { key: 'descartadas', label: '❌ Descartadas', statuses: ['descartado', 'sin respuesta', 'sin_respuesta'] },
-  ];
-
-  const empresaGroups = search
-    ? [{ key: 'all', label: '', empresas: sortedEmpresas }]
-    : EMPRESA_GROUPS.map(g => ({
-        key: g.key,
-        label: g.label,
-        empresas: sortedEmpresas.filter(e => g.statuses.includes(e.status ?? '')),
-      })).filter(g => g.empresas.length > 0);
+  // ── Networking coach tip ──
+  const getNetworkingCoachTip = () => {
+    if (eventos.length === 0) return { icon: '🤝', text: 'El networking intencional acelera todo. Agregá un evento al que vayas a ir y ponete una meta de contactos.' };
+    const totalGoal = eventos.reduce((s, e) => s + (e.contactGoal || 0), 0);
+    const totalMet = eventos.reduce((s, e) => s + (e.contactsMet || 0), 0);
+    const eventContacts = contactos.filter(c => c.eventSource);
+    const sinSeguimiento = eventContacts.filter(c => actividades.filter(a => a.contactoId === c.id).length === 0);
+    if (sinSeguimiento.length > 0) return { icon: '📩', text: `Tenés ${sinSeguimiento.length} contacto${sinSeguimiento.length > 1 ? 's' : ''} de eventos sin seguimiento. El networking no sirve si no hacés follow-up.` };
+    if (totalGoal > 0 && totalMet < totalGoal * 0.5) return { icon: '🎯', text: `Vas por ${totalMet} de ${totalGoal} contactos meta. Animate a hablar con más personas en tus próximos eventos.` };
+    const today = new Date().toISOString().split('T')[0];
+    const conEntrevista = empresas.filter(e => e.status === 'entrevista');
+    if (conEntrevista.length > 0) return { icon: '🔥', text: `Tenés ${conEntrevista.length} empresa${conEntrevista.length > 1 ? 's' : ''} en entrevista. Enfocá tu energía ahí.` };
+    return { icon: '✨', text: 'Buen trabajo conectando. Revisá si podés convertir algún contacto de evento en una oportunidad real.' };
+  };
 
   return (
     <AppShell>
       <div className="flex h-full min-h-screen">
-        {/* Left panel */}
+        {/* ── Left panel ── */}
         <div className="flex-1 flex flex-col border-r border-[var(--color-brand-border)]">
           {/* Header */}
           <div className="bg-white border-b border-[var(--color-brand-border)] px-6 pt-6 pb-0">
@@ -160,16 +289,44 @@ function CRMPageInner() {
             </div>
 
             {/* Search */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar..."
-                className="w-full pl-9 pr-4 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-[var(--color-brand-gray)]"
-              />
-              {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="w-3.5 h-3.5 text-gray-400" /></button>}
-            </div>
+            {tab !== 'networking' && (
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar..."
+                  className="w-full pl-9 pr-4 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-[var(--color-brand-gray)]"
+                />
+                {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="w-3.5 h-3.5 text-gray-400" /></button>}
+              </div>
+            )}
+
+            {/* Empresa filter chips — hide when searching */}
+            {tab === 'empresas' && !search && (
+              <div className="flex gap-1.5 flex-wrap mb-3">
+                {([
+                  { key: 'todas', label: 'Todas', count: empresas.length },
+                  { key: 'activas', label: 'Activas', count: empresas.filter(e => ['contactado', 'en conversación', 'entrevista'].includes(e.status ?? '') || (e.status === 'investigando' && (e.numActividades ?? 0) > 0)).length },
+                  { key: 'sin_prospectar', label: 'Sin prospectar', count: empresas.filter(e => e.status === 'investigando' && (e.numActividades ?? 0) === 0).length },
+                  { key: 'descartadas', label: 'Descartadas', count: empresas.filter(e => ['descartado', 'sin respuesta'].includes(e.status ?? '')).length },
+                ] as { key: EmpresaFilter; label: string; count: number }[])
+                  .filter(f => f.key === 'todas' || f.count > 0)
+                  .map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setEmpresaFilter(f.key)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        empresaFilter === f.key
+                          ? 'bg-[var(--color-pirai-500)] text-white'
+                          : 'bg-[var(--color-brand-gray)] text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+              </div>
+            )}
 
             {/* Tabs */}
             <div className="flex gap-1">
@@ -196,7 +353,7 @@ function CRMPageInner() {
             {loading ? (
               <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-[var(--color-pirai-500)]" /></div>
             ) : tab === 'empresas' ? (
-              sortedEmpresas.length === 0 ? (
+              displayedEmpresas.length === 0 ? (
                 <EmptyState label="Sin empresas aún" sub="Agregá la primera empresa a tu pipeline." />
               ) : (
                 <div className="space-y-6">
@@ -225,23 +382,51 @@ function CRMPageInner() {
                 </div>
               )
             ) : (
-              eventos.length === 0 ? (
-                <EmptyState label="Sin eventos aún" sub="Registrá eventos de networking para hacer seguimiento." />
-              ) : eventos.map(ev => (
-                <EventoRow key={ev.id} ev={ev} onClick={() => setSelected(ev as unknown as Empresa)} />
-              ))
+              /* ── Networking / Eventos tab ── */
+              <EventosPanel
+                eventos={eventos}
+                contactos={contactos}
+                actividades={actividades}
+                eventFilter={eventFilter}
+                setEventFilter={setEventFilter}
+                coachTip={getNetworkingCoachTip()}
+              />
             )}
           </div>
         </div>
 
-        {/* Detail panel */}
-        <div className="w-96 bg-white overflow-auto">
+        {/* ── Detail panel ── */}
+        <div className="w-[420px] bg-white overflow-auto border-l border-[var(--color-brand-border)]">
           {selected ? (
             tab === 'empresas' ? (
-              <EmpresaDetail emp={selected as Empresa} onClose={() => setSelected(null)} />
-            ) : (
-              <ContactoDetail c={selected as Contacto} onClose={() => setSelected(null)} />
-            )
+              <EmpresaDetail
+                emp={selected as Empresa}
+                contactos={contactos}
+                actividades={actividades}
+                BASE={BASE}
+                userId={userId ?? ''}
+                onClose={() => setSelected(null)}
+                onUpdate={(updated) => {
+                  setEmpresas(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated } : e));
+                  setSelected(updated);
+                }}
+                onDelete={(id) => { setEmpresas(prev => prev.filter(e => e.id !== id)); setSelected(null); }}
+              />
+            ) : tab === 'contactos' ? (
+              <ContactoDetail
+                c={selected as Contacto}
+                empresas={empresas}
+                actividades={actividades}
+                BASE={BASE}
+                userId={userId ?? ''}
+                onClose={() => setSelected(null)}
+                onUpdate={(updated) => {
+                  setContactos(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
+                  setSelected(updated);
+                }}
+                onDelete={(id) => { setContactos(prev => prev.filter(c => c.id !== id)); setSelected(null); }}
+              />
+            ) : null
           ) : (
             <div className="flex items-center justify-center h-full text-[var(--color-brand-muted)] text-sm p-8 text-center">
               Seleccioná un elemento para ver sus detalles
@@ -252,6 +437,142 @@ function CRMPageInner() {
     </AppShell>
   );
 }
+
+// ─── Eventos Panel ────────────────────────────────────────────────────────────
+
+function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFilter, coachTip }: {
+  eventos: Evento[];
+  contactos: Contacto[];
+  actividades: Actividad[];
+  eventFilter: EventFilter;
+  setEventFilter: (f: EventFilter) => void;
+  coachTip: { icon: string; text: string };
+}) {
+  const today = new Date().toISOString().split('T')[0];
+  const totalGoal = eventos.reduce((s, e) => s + (e.contactGoal || 0), 0);
+  const totalMet = eventos.reduce((s, e) => s + (e.contactsMet || 0), 0);
+  const overallProgress = totalGoal > 0 ? Math.min(100, Math.round((totalMet / totalGoal) * 100)) : 0;
+
+  const eventTabs = [
+    { key: 'todos' as EventFilter, label: 'Todos', count: eventos.length },
+    { key: 'hoy' as EventFilter, label: 'Hoy', count: eventos.filter(e => e.date === today).length },
+    { key: 'proximos' as EventFilter, label: 'Próximos', count: eventos.filter(e => e.date && e.date > today).length },
+    { key: 'pasados' as EventFilter, label: 'Pasados', count: eventos.filter(e => !e.date || e.date < today).length },
+  ].filter(t => t.key === 'todos' || t.count > 0);
+
+  let filtered = [...eventos];
+  if (eventFilter === 'hoy') filtered = eventos.filter(e => e.date === today);
+  else if (eventFilter === 'proximos') filtered = eventos.filter(e => e.date && e.date > today);
+  else if (eventFilter === 'pasados') filtered = eventos.filter(e => !e.date || e.date < today);
+  // sort ascending (nearest first)
+  filtered.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  return (
+    <div className="space-y-4">
+      {/* Coach tip */}
+      <div className="bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-3 flex items-start gap-2.5">
+        <span className="text-lg mt-0.5">{coachTip.icon}</span>
+        <p className="text-sm text-[var(--color-pirai-800)] leading-relaxed">{coachTip.text}</p>
+      </div>
+
+      {/* Overall progress */}
+      {eventos.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-gray-700">Meta total de contactos</p>
+            <p className="text-sm font-bold text-[var(--color-pirai-600)]">{totalMet} / {totalGoal}</p>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="bg-[var(--color-pirai-500)] h-2.5 rounded-full transition-all" style={{ width: `${overallProgress}%` }} />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">{overallProgress}% completado</p>
+        </div>
+      )}
+
+      {/* Sub-filter tabs */}
+      {eventos.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {eventTabs.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setEventFilter(t.key)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                eventFilter === t.key
+                  ? 'bg-[var(--color-pirai-500)] text-white'
+                  : 'bg-[var(--color-brand-gray)] text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {t.label} ({t.count})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Event cards */}
+      {eventos.length === 0 ? (
+        <EmptyState label="Sin eventos aún" sub="Registrá eventos de networking para hacer seguimiento." />
+      ) : filtered.length === 0 ? (
+        <div className="bg-[var(--color-brand-gray)] rounded-2xl p-6 text-center">
+          <p className="text-sm text-gray-400">No hay eventos en este filtro.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(event => {
+            const eventContacts = contactos.filter(c => c.eventSource === event.name);
+            const progress = (event.contactGoal ?? 0) > 0
+              ? Math.min(100, Math.round(((event.contactsMet ?? 0) / (event.contactGoal ?? 1)) * 100))
+              : 0;
+            const isComplete = (event.contactsMet ?? 0) >= (event.contactGoal ?? 1) && (event.contactGoal ?? 0) > 0;
+            const typeLabel = EVENT_TYPE_LABELS[event.type ?? ''] || event.type || '';
+
+            return (
+              <div key={event.id} className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-[var(--color-brand-dark)]">{event.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {event.date && (
+                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {event.date}
+                          {event.end_date && event.end_date !== event.date ? ` → ${event.end_date}` : ''}
+                          {event.time ? ` · ${event.time}` : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {typeLabel && (
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${event.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]'}`}>
+                      {typeLabel}
+                    </span>
+                  )}
+                </div>
+                <div className="mb-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-500">
+                      Contactos: {event.contactsMet ?? 0} / {event.contactGoal ?? 0}
+                      {eventContacts.length > 0 && ` · ${eventContacts.length} registrados`}
+                    </span>
+                    {isComplete && (
+                      <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" /> Meta cumplida
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-[var(--color-pirai-500)] h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Row components ───────────────────────────────────────────────────────────
 
 function EmpresaRow({ emp, active, onClick }: { emp: Empresa; active: boolean; onClick: () => void }) {
   return (
@@ -269,12 +590,24 @@ function EmpresaRow({ emp, active, onClick }: { emp: Empresa; active: boolean; o
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-[var(--color-brand-dark)] truncate">{emp.name}</p>
         <p className="text-xs text-[var(--color-brand-muted)] truncate">{[emp.industry, emp.country].filter(Boolean).join(' · ')}</p>
+        {(emp.numContactos !== undefined || emp.numActividades !== undefined) && (
+          <p className="text-[10px] text-gray-400 mt-0.5">
+            {emp.numContactos ?? 0} contactos · {emp.numActividades ?? 0} actividades
+          </p>
+        )}
       </div>
-      {emp.status && (
-        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${STATUS_COLORS[emp.status] ?? 'bg-gray-100 text-gray-500'}`}>
-          {emp.status}
-        </span>
-      )}
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        {emp.priority && (
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${PRIORITY_COLORS[emp.priority] ?? 'bg-gray-100 text-gray-500'}`}>
+            {emp.priority}
+          </span>
+        )}
+        {emp.status && (
+          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_COLORS[emp.status] ?? 'bg-gray-100 text-gray-500'}`}>
+            {emp.status}
+          </span>
+        )}
+      </div>
       <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
     </button>
   );
@@ -293,29 +626,109 @@ function ContactoRow({ c, active, onClick }: { c: Contacto; active: boolean; onC
         <p className="font-semibold text-sm text-[var(--color-brand-dark)] truncate">{c.name}</p>
         <p className="text-xs text-[var(--color-brand-muted)] truncate">{[c.title, c.empresaNombre].filter(Boolean).join(' · ')}</p>
       </div>
+      {c.stage && (
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)] shrink-0">
+          {STAGE_LABELS[c.stage] ?? c.stage}
+        </span>
+      )}
       <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
     </button>
   );
 }
 
-function EventoRow({ ev, onClick }: { ev: Evento; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="w-full flex items-center gap-3 p-3 rounded-xl text-left bg-white border border-transparent hover:border-[var(--color-brand-border)] hover:shadow-sm transition-all">
-      <div className="w-10 h-10 rounded-xl bg-[var(--color-turquesa-50)] flex items-center justify-center shrink-0">
-        <Calendar className="w-5 h-5 text-[var(--color-turquesa-500)]" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-[var(--color-brand-dark)] truncate">{ev.name}</p>
-        <p className="text-xs text-[var(--color-brand-muted)]">{[ev.date, ev.city, ev.country].filter(Boolean).join(' · ')}</p>
-      </div>
-    </button>
-  );
-}
+// ─── Empresa Detail Panel ─────────────────────────────────────────────────────
 
-function EmpresaDetail({ emp, onClose }: { emp: Empresa; onClose: () => void }) {
+function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onUpdate, onDelete }: {
+  emp: Empresa;
+  contactos: Contacto[];
+  actividades: Actividad[];
+  BASE: string;
+  userId: string;
+  onClose: () => void;
+  onUpdate: (emp: Empresa) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: emp.name, industry: emp.industry ?? '', status: emp.status ?? '', priority: emp.priority ?? '', notes: emp.notes ?? '', objetivo: emp.objetivo ?? '', website: emp.website ?? '', country: emp.country ?? '' });
+  const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showAllActs, setShowAllActs] = useState(false);
+  const [showContactos, setShowContactos] = useState(false);
+
+  const contactosEmpresa = contactos.filter(c => c.empresaId === emp.id);
+  const actividadesEmpresa = actividades
+    .filter(a => a.empresaId === emp.id)
+    .sort((a, b) => (b.createdAt || b.fecha || '').localeCompare(a.createdAt || a.fecha || ''));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await fetch(`${BASE}/api/crm/empresa`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: emp.id, userId, ...editForm }),
+      });
+      onUpdate({ ...emp, ...editForm });
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await fetch(`${BASE}/api/crm/empresa`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: emp.id, userId }),
+      });
+      onDelete(emp.id);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-bold text-[var(--color-brand-dark)]">Editar empresa</h2>
+          <button onClick={() => setEditing(false)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <EditField label="Nombre" value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} />
+        <EditField label="Industria" value={editForm.industry} onChange={v => setEditForm(f => ({ ...f, industry: v }))} />
+        <div>
+          <label className="text-xs text-[var(--color-brand-muted)] mb-1 block">Estado</label>
+          <select value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))} className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+            {['investigando','contactado','en conversación','sin respuesta','descartado','entrevista','oferta','cliente'].map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-[var(--color-brand-muted)] mb-1 block">Prioridad</label>
+          <select value={editForm.priority} onChange={e => setEditForm(f => ({ ...f, priority: e.target.value }))} className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+            {['alta','media','baja'].map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        <EditField label="Objetivo" value={editForm.objetivo} onChange={v => setEditForm(f => ({ ...f, objetivo: v }))} textarea />
+        <EditField label="Notas" value={editForm.notes} onChange={v => setEditForm(f => ({ ...f, notes: v }))} textarea />
+        <EditField label="Website" value={editForm.website} onChange={v => setEditForm(f => ({ ...f, website: v }))} />
+        <EditField label="País" value={editForm.country} onChange={v => setEditForm(f => ({ ...f, country: v }))} />
+        <div className="flex gap-2 pt-2">
+          <button onClick={() => setEditing(false)} className="flex-1 py-2 rounded-xl text-sm font-semibold border border-[var(--color-brand-border)] text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button onClick={handleSave} disabled={saving} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Guardar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <div className="flex items-start justify-between mb-5">
+    <div className="p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           {emp.logo_url ? (
             <img src={emp.logo_url} alt={emp.name} className="w-12 h-12 rounded-xl object-contain border border-gray-100" />
@@ -326,56 +739,262 @@ function EmpresaDetail({ emp, onClose }: { emp: Empresa; onClose: () => void }) 
           )}
           <div>
             <h2 className="font-bold text-[var(--color-brand-dark)]">{emp.name}</h2>
-            <p className="text-xs text-[var(--color-brand-muted)]">{emp.industry}</p>
+            {emp.industry && <p className="text-xs text-[var(--color-brand-muted)]">{emp.industry}</p>}
           </div>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
       </div>
 
-      {emp.status && (
-        <div className="mb-4">
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[emp.status] ?? 'bg-gray-100 text-gray-500'}`}>{emp.status}</span>
+      {/* Badges */}
+      <div className="flex gap-2 flex-wrap">
+        {emp.priority && <Badge className={PRIORITY_COLORS[emp.priority] ?? 'bg-gray-100 text-gray-500'}>{emp.priority}</Badge>}
+        {emp.status && <Badge className={STATUS_COLORS[emp.status] ?? 'bg-gray-100 text-gray-500'}>{emp.status}</Badge>}
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-2 text-center bg-[var(--color-brand-gray)] rounded-xl p-3">
+        <button onClick={() => setShowContactos(v => !v)} className="hover:bg-white rounded-lg p-2 transition-colors">
+          <p className="text-lg font-bold text-[var(--color-pirai-600)]">{contactosEmpresa.length}</p>
+          <p className="text-[10px] text-gray-500 flex items-center justify-center gap-0.5">Contactos {showContactos ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</p>
+        </button>
+        <div className="p-2">
+          <p className="text-lg font-bold text-[var(--color-turquesa-500)]">{emp.numActividades ?? actividadesEmpresa.length}</p>
+          <p className="text-[10px] text-gray-500">Actividades</p>
+        </div>
+        <div className="p-2">
+          <p className="text-xs font-semibold text-gray-700 truncate">{emp.ultimaActividad ?? '—'}</p>
+          <p className="text-[10px] text-gray-500">Última act.</p>
+        </div>
+      </div>
+
+      {/* Objetivo */}
+      {emp.objetivo && (
+        <div>
+          <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-1">🎯 Objetivo</p>
+          <p className="text-sm text-[var(--color-brand-dark)] bg-[var(--color-brand-gray)] rounded-xl p-3 leading-relaxed whitespace-pre-line">{emp.objetivo}</p>
         </div>
       )}
 
-      <div className="space-y-3 text-sm">
+      {/* Notes */}
+      {emp.notes && (
+        <div>
+          <p className="text-xs text-[var(--color-brand-muted)] mb-1">Notas</p>
+          <p className="text-sm text-[var(--color-brand-dark)] bg-[var(--color-brand-gray)] rounded-xl p-3 leading-relaxed whitespace-pre-line">{emp.notes}</p>
+        </div>
+      )}
+
+      {/* Website / country */}
+      <div className="space-y-2 text-sm">
         {emp.country && <InfoRow label="País" value={emp.country} />}
         {emp.website && (
           <div className="flex items-center justify-between">
-            <span className="text-[var(--color-brand-muted)] text-xs">Web</span>
+            <span className="text-xs text-[var(--color-brand-muted)]">Web</span>
             <a href={emp.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[var(--color-pirai-600)] text-xs hover:underline">
               {emp.website} <ExternalLink className="w-3 h-3" />
             </a>
           </div>
         )}
-        {emp.notes && (
-          <div>
-            <p className="text-xs text-[var(--color-brand-muted)] mb-1">Notas</p>
-            <p className="text-sm text-[var(--color-brand-dark)] bg-[var(--color-brand-gray)] rounded-xl p-3 leading-relaxed">{emp.notes}</p>
-          </div>
-        )}
       </div>
+
+      {/* Contactos expandible */}
+      {showContactos && (
+        <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
+          <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)]">
+            <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Contactos ({contactosEmpresa.length})</p>
+          </div>
+          {contactosEmpresa.length === 0 ? (
+            <p className="p-4 text-xs text-gray-400 text-center">Sin contactos aún</p>
+          ) : (
+            <div className="divide-y divide-[var(--color-brand-border)]">
+              {contactosEmpresa.map(c => (
+                <div key={c.id} className="px-3 py-2.5 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--color-brand-dark)]">{c.name}</p>
+                    {c.title && <p className="text-xs text-gray-400">{c.title}</p>}
+                  </div>
+                  {c.stage && <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]">{STAGE_LABELS[c.stage] ?? c.stage}</Badge>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Activities timeline */}
+      {actividadesEmpresa.length > 0 && (
+        <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
+          <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-[var(--color-turquesa-500)]" />
+            <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Actividades ({actividadesEmpresa.length})</p>
+          </div>
+          <div className="divide-y divide-[var(--color-brand-border)]">
+            {(showAllActs ? actividadesEmpresa : actividadesEmpresa.slice(0, 10)).map(a => (
+              <div key={a.id} className="px-3 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <span className="text-sm">{ACTIVITY_EMOJIS[a.tipo] ?? '📌'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-[var(--color-brand-dark)] truncate">{ACTIVITY_LABELS[a.tipo] ?? a.tipo}</p>
+                    {a.contactoNombre && <p className="text-[10px] text-gray-400">{a.contactoNombre}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] text-gray-400">{a.fecha}</span>
+                  {a.respuesta && <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)]">✓</Badge>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {!showAllActs && actividadesEmpresa.length > 10 && (
+            <button onClick={() => setShowAllActs(true)} className="w-full py-2 text-xs font-semibold text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] transition-colors">
+              Ver más ({actividadesEmpresa.length - 10} más)
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Edit / Delete buttons */}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => {
+            setEditForm({ name: emp.name, industry: emp.industry ?? '', status: emp.status ?? '', priority: emp.priority ?? '', notes: emp.notes ?? '', objetivo: emp.objetivo ?? '', website: emp.website ?? '', country: emp.country ?? '' });
+            setEditing(true);
+          }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] transition-colors"
+        >
+          <Pencil className="w-3.5 h-3.5" /> Editar
+        </button>
+        <button
+          onClick={() => setConfirmDel(true)}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" /> Eliminar
+        </button>
+      </div>
+
+      {/* Delete confirm */}
+      {confirmDel && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-red-800">¿Eliminar "{emp.name}"?</p>
+          <p className="text-xs text-red-600">Esta acción no se puede deshacer.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setConfirmDel(false)} className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-red-200 text-red-600 hover:bg-red-100">Cancelar</button>
+            <button onClick={handleDelete} disabled={deleting} className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-red-500 text-white hover:bg-red-600 disabled:opacity-60 flex items-center justify-center gap-1">
+              {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Eliminar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ContactoDetail({ c, onClose }: { c: Contacto; onClose: () => void }) {
+// ─── Contacto Detail Panel ────────────────────────────────────────────────────
+
+function ContactoDetail({ c, empresas, actividades, BASE, userId, onClose, onUpdate, onDelete }: {
+  c: Contacto;
+  empresas: Empresa[];
+  actividades: Actividad[];
+  BASE: string;
+  userId: string;
+  onClose: () => void;
+  onUpdate: (c: Contacto) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: c.name, title: c.title ?? '', email: c.email ?? '', linkedinUrl: c.linkedinUrl ?? '', phone: c.phone ?? '', stage: c.stage ?? '', notes: c.notes ?? '' });
+  const [saving, setSaving] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showAllActs, setShowAllActs] = useState(false);
+
+  const empresa = empresas.find(e => e.id === c.empresaId);
+  const actividadesContacto = actividades
+    .filter(a => a.contactoId === c.id)
+    .sort((a, b) => (b.createdAt || b.fecha || '').localeCompare(a.createdAt || a.fecha || ''));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await fetch(`${BASE}/api/crm/contacto`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: c.id, userId, ...editForm, linkedin_url: editForm.linkedinUrl }),
+      });
+      onUpdate({ ...c, ...editForm });
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await fetch(`${BASE}/api/crm/contacto`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: c.id, userId }),
+      });
+      onDelete(c.id);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-bold text-[var(--color-brand-dark)]">Editar contacto</h2>
+          <button onClick={() => setEditing(false)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
+        </div>
+        <EditField label="Nombre" value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} />
+        <EditField label="Título / Cargo" value={editForm.title} onChange={v => setEditForm(f => ({ ...f, title: v }))} />
+        <EditField label="Email" value={editForm.email} onChange={v => setEditForm(f => ({ ...f, email: v }))} />
+        <EditField label="LinkedIn URL" value={editForm.linkedinUrl} onChange={v => setEditForm(f => ({ ...f, linkedinUrl: v }))} />
+        <EditField label="Teléfono" value={editForm.phone} onChange={v => setEditForm(f => ({ ...f, phone: v }))} />
+        <div>
+          <label className="text-xs text-[var(--color-brand-muted)] mb-1 block">Etapa</label>
+          <select value={editForm.stage} onChange={e => setEditForm(f => ({ ...f, stage: e.target.value }))} className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+            {Object.entries(STAGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        <EditField label="Notas" value={editForm.notes} onChange={v => setEditForm(f => ({ ...f, notes: v }))} textarea />
+        <div className="flex gap-2 pt-2">
+          <button onClick={() => setEditing(false)} className="flex-1 py-2 rounded-xl text-sm font-semibold border border-[var(--color-brand-border)] text-gray-600 hover:bg-gray-50">Cancelar</button>
+          <button onClick={handleSave} disabled={saving} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 flex items-center justify-center gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Guardar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <div className="flex items-start justify-between mb-5">
+    <div className="p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-pirai-400)] to-[var(--color-turquesa-500)] flex items-center justify-center text-white font-bold">
             {c.name.charAt(0).toUpperCase()}
           </div>
           <div>
             <h2 className="font-bold text-[var(--color-brand-dark)]">{c.name}</h2>
-            <p className="text-xs text-[var(--color-brand-muted)]">{[c.title, c.empresaNombre].filter(Boolean).join(' · ')}</p>
+            <p className="text-xs text-[var(--color-brand-muted)]">{[c.title, empresa?.name ?? c.empresaNombre].filter(Boolean).join(' · ')}</p>
           </div>
         </div>
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
       </div>
 
-      <div className="space-y-3">
+      {/* Stage badge */}
+      {c.stage && (
+        <div>
+          <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]">{STAGE_LABELS[c.stage] ?? c.stage}</Badge>
+        </div>
+      )}
+
+      {/* Contact links */}
+      <div className="space-y-2">
         {c.email && (
           <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-sm text-[var(--color-pirai-600)] hover:underline">
             <Mail className="w-4 h-4" /> {c.email}
@@ -386,13 +1005,100 @@ function ContactoDetail({ c, onClose }: { c: Contacto; onClose: () => void }) {
             <Link2 className="w-4 h-4" /> LinkedIn
           </a>
         )}
-        {c.stage && (
-          <div className="mt-3">
-            <span className="text-xs text-[var(--color-brand-muted)]">Etapa: </span>
-            <span className="text-xs font-semibold text-[var(--color-brand-dark)]">{c.stage}</span>
-          </div>
+        {c.phone && (
+          <a href={`tel:${c.phone}`} className="flex items-center gap-2 text-sm text-[var(--color-brand-dark)] hover:underline">
+            <Phone className="w-4 h-4" /> {c.phone}
+          </a>
         )}
       </div>
+
+      {/* Notes */}
+      {c.notes && (
+        <div>
+          <p className="text-xs text-[var(--color-brand-muted)] mb-1">Notas</p>
+          <p className="text-sm text-[var(--color-brand-dark)] bg-[var(--color-brand-gray)] rounded-xl p-3 leading-relaxed whitespace-pre-line">{c.notes}</p>
+        </div>
+      )}
+
+      {/* Activities timeline */}
+      {actividadesContacto.length > 0 && (
+        <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
+          <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-[var(--color-turquesa-500)]" />
+            <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Actividades ({actividadesContacto.length})</p>
+          </div>
+          <div className="divide-y divide-[var(--color-brand-border)]">
+            {(showAllActs ? actividadesContacto : actividadesContacto.slice(0, 5)).map(a => (
+              <div key={a.id} className="px-3 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <span className="text-sm">{ACTIVITY_EMOJIS[a.tipo] ?? '📌'}</span>
+                  <p className="text-xs font-medium text-[var(--color-brand-dark)] truncate">{ACTIVITY_LABELS[a.tipo] ?? a.tipo}</p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] text-gray-400">{a.fecha}</span>
+                  {a.respuesta && <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)]">✓</Badge>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {!showAllActs && actividadesContacto.length > 5 && (
+            <button onClick={() => setShowAllActs(true)} className="w-full py-2 text-xs font-semibold text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] transition-colors">
+              Ver más ({actividadesContacto.length - 5} más)
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Edit / Delete buttons */}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={() => {
+            setEditForm({ name: c.name, title: c.title ?? '', email: c.email ?? '', linkedinUrl: c.linkedinUrl ?? '', phone: c.phone ?? '', stage: c.stage ?? '', notes: c.notes ?? '' });
+            setEditing(true);
+          }}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] transition-colors"
+        >
+          <Pencil className="w-3.5 h-3.5" /> Editar
+        </button>
+        <button
+          onClick={() => setConfirmDel(true)}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" /> Eliminar
+        </button>
+      </div>
+
+      {/* Delete confirm */}
+      {confirmDel && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-red-800">¿Eliminar "{c.name}"?</p>
+          <p className="text-xs text-red-600">Esta acción no se puede deshacer.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setConfirmDel(false)} className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-red-200 text-red-600 hover:bg-red-100">Cancelar</button>
+            <button onClick={handleDelete} disabled={deleting} className="flex-1 py-1.5 rounded-lg text-xs font-medium bg-red-500 text-white hover:bg-red-600 disabled:opacity-60 flex items-center justify-center gap-1">
+              {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Eliminar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared small components ──────────────────────────────────────────────────
+
+function Badge({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${className ?? ''}`}>{children}</span>;
+}
+
+function EditField({ label, value, onChange, textarea }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean }) {
+  const cls = "w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]";
+  return (
+    <div>
+      <label className="text-xs text-[var(--color-brand-muted)] mb-1 block">{label}</label>
+      {textarea
+        ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={3} className={cls} />
+        : <input value={value} onChange={e => onChange(e.target.value)} className={cls} />}
     </div>
   );
 }
