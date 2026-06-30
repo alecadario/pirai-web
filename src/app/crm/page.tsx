@@ -1069,6 +1069,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, onCl
         }),
       }).then(r => r.json());
       setGeneratedMsg(res.message ?? res.text ?? '');
+      if (res.subject) setComposeSubject(res.subject);
     } catch { setGeneratedMsg(''); }
     finally { setGeneratingMsg(false); }
   };
