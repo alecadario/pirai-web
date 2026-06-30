@@ -112,7 +112,7 @@ export default function CRMPage() {
   const TABS = [
     { id: 'empresas' as Tab, label: 'Empresas', icon: Building2, count: empresas.length },
     { id: 'contactos' as Tab, label: 'Contactos', icon: Users, count: contactos.length },
-    { id: 'networking' as Tab, label: 'Networking', icon: Calendar, count: eventos.length },
+    { id: 'networking' as Tab, label: 'Eventos', icon: Calendar, count: eventos.length },
   ];
 
   const filteredEmpresas = empresas.filter(e =>
