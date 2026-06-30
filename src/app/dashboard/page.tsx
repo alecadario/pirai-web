@@ -33,25 +33,39 @@ export default function DashboardPage() {
     if (!userId) return;
     setLoading(true);
     try {
-      const [profileRes, crmRes] = await Promise.allSettled([
-        api.get<Record<string, unknown>>(`/api/user/profile?userId=${userId}`),
-        api.get<{ companies: unknown[]; contacts: unknown[]; activities: { fecha: string; respuesta?: boolean }[] }>(`/api/bootstrap?userId=${userId}`),
-      ]);
-      if (profileRes.status === 'fulfilled') {
-        const v = profileRes.value;
-        setProfile((v.profile ?? v) as ProfileData);
-      }
-      if (crmRes.status === 'fulfilled') {
-        const { companies: empresas = [], contacts: contactos = [], activities: actividades = [] } = crmRes.value;
-        const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-        setStats({
-          totalEmpresas: empresas.length,
-          totalContactos: contactos.length,
-          actividadesSemana: actividades.filter(a => a.fecha >= sevenDaysAgo).length,
-          tasaRespuesta: actividades.length > 0
-            ? Math.round((actividades.filter(a => a.respuesta).length / actividades.length) * 100) : 0,
-        });
-      }
+      // Get user record first for diagnosis/stage (same as mobile app)
+      let diagnosis = '';
+      let stage = '';
+      try {
+        const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
+        const userRecord = await fetch(`${BASE}/api/user-record?userId=${encodeURIComponent(userId)}`).then(r => r.json());
+        const fields = userRecord?.record?.fields ?? {};
+        if (fields.onboarding_answers) {
+          try {
+            const answers = JSON.parse(fields.onboarding_answers);
+            setProfile({ stage: answers.stage ?? null });
+            diagnosis = answers.diagnosis ?? '';
+            stage = answers.stage ?? '';
+          } catch {}
+        }
+      } catch {}
+
+      const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
+      const data = await fetch(
+        `${BASE}/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=${encodeURIComponent(diagnosis)}&stage=${encodeURIComponent(stage)}`
+      ).then(r => r.json());
+
+      const empresas = data.companies ?? [];
+      const contactos = data.contacts ?? [];
+      const actividades = data.activities ?? [];
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+      setStats({
+        totalEmpresas: empresas.length,
+        totalContactos: contactos.length,
+        actividadesSemana: actividades.filter((a: { fecha: string }) => a.fecha >= sevenDaysAgo).length,
+        tasaRespuesta: actividades.length > 0
+          ? Math.round((actividades.filter((a: { respuesta?: boolean }) => a.respuesta).length / actividades.length) * 100) : 0,
+      });
     } finally { setLoading(false); }
   }, [userId]);
 

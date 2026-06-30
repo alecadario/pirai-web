@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getUserId } from './auth';
-import { api } from './api';
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
+
+async function apiFetch<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`);
+  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  return res.json();
+}
 
 export interface ProfileData {
   stage: string | null;
@@ -12,6 +19,7 @@ export interface ProfileData {
   ideal_day: string;
   services_description: string;
   fullName?: string;
+  diagnosis?: string;
 }
 
 export interface Empresa {
@@ -22,35 +30,38 @@ export interface Empresa {
   website?: string;
   country?: string;
   logo_url?: string;
-  linkedin_url?: string;
-  description?: string;
   notes?: string;
+  objetivo?: string;
+  numContactos?: number;
+  numActividades?: number;
+  ultimaActividad?: string;
 }
 
 export interface Contacto {
   id: string;
   name: string;
-  role?: string;
+  title?: string;
   email?: string;
-  linkedin?: string;
-  company_name?: string;
-  company_id?: string;
+  linkedinUrl?: string;
+  phone?: string;
+  empresaNombre?: string;
+  empresaId?: string;
   stage?: string;
   notes?: string;
+  country?: string;
 }
 
 export interface Actividad {
   id: string;
   tipo: string;
   fecha: string;
-  empresa?: string;
-  empresa_id?: string;
-  contacto?: string;
-  contacto_id?: string;
-  estado?: string;
-  prioridad?: string;
+  empresaId?: string;
+  empresaNombre?: string;
+  contactoId?: string;
+  contactoNombre?: string;
   respuesta?: boolean;
-  notes?: string;
+  notas?: string;
+  createdAt?: string;
 }
 
 export interface SearchQuota {
@@ -79,19 +90,47 @@ export function useAppData() {
     setLoading(true);
     setError(null);
     try {
-      const [profileRes, crmRes, quotaRes] = await Promise.allSettled([
-        api.get<{ profile: ProfileData }>(`/api/user/profile?userId=${userId}`),
-        api.get<{ companies: Empresa[]; contacts: Contacto[]; activities: Actividad[] }>(`/api/bootstrap?userId=${userId}`),
-        api.get<SearchQuota>(`/api/user/search-quota?userId=${userId}`),
-      ]);
+      // Step 1: get user record to obtain diagnosis + stage (same as mobile app)
+      let diagnosis = '';
+      let stage = '';
+      try {
+        const userRecord = await apiFetch<{ record?: { fields?: Record<string, unknown> } }>(
+          `/api/user-record?userId=${encodeURIComponent(userId)}`
+        );
+        const fields = userRecord?.record?.fields ?? {};
+        if (fields.onboarding_answers) {
+          try {
+            const answers = JSON.parse(fields.onboarding_answers as string);
+            setProfileData(answers);
+            diagnosis = answers.diagnosis ?? '';
+            stage = answers.stage ?? '';
+          } catch {}
+        }
+        if (fields.diagnosis) diagnosis = fields.diagnosis as string;
+        if (fields.stage) stage = fields.stage as string;
+      } catch {}
 
-      if (profileRes.status === 'fulfilled') setProfileData(profileRes.value.profile ?? profileRes.value as unknown as ProfileData);
-      if (crmRes.status === 'fulfilled') {
-        setEmpresas(crmRes.value.companies ?? []);
-        setContactos(crmRes.value.contacts ?? []);
-        setActividades(crmRes.value.activities ?? []);
-      }
-      if (quotaRes.status === 'fulfilled') setSearchQuota(quotaRes.value);
+      // Step 2: bootstrap with diagnosis + stage (same as mobile app)
+      const data = await apiFetch<{
+        companies: Empresa[];
+        contacts: Contacto[];
+        activities: Actividad[];
+      }>(`/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=${encodeURIComponent(diagnosis)}&stage=${encodeURIComponent(stage)}`);
+
+      setEmpresas(data.companies ?? []);
+      setContactos(data.contacts ?? []);
+      setActividades((data.activities ?? []).sort((a, b) => {
+        const ca = a.createdAt ?? a.fecha ?? '';
+        const cb = b.createdAt ?? b.fecha ?? '';
+        return cb.localeCompare(ca);
+      }));
+
+      // Step 3: search quota
+      try {
+        const quota = await apiFetch<SearchQuota>(`/api/user/search-quota?userId=${encodeURIComponent(userId)}`);
+        setSearchQuota(quota);
+      } catch {}
+
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando datos');
     } finally {

@@ -65,11 +65,21 @@ export default function CRMPage() {
     if (!userId) return;
     setLoading(true);
     try {
-      const res = await api.get<{
-        companies: Empresa[];
-        contacts: Contacto[];
-        events?: Evento[];
-      }>(`/api/bootstrap?userId=${userId}`);
+      const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
+      let diagnosis = '';
+      let stage = '';
+      try {
+        const ur = await fetch(`${BASE}/api/user-record?userId=${encodeURIComponent(userId)}`).then(r => r.json());
+        const fields = ur?.record?.fields ?? {};
+        if (fields.onboarding_answers) {
+          const a = JSON.parse(fields.onboarding_answers);
+          diagnosis = a.diagnosis ?? '';
+          stage = a.stage ?? '';
+        }
+      } catch {}
+      const res = await fetch(
+        `${BASE}/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=${encodeURIComponent(diagnosis)}&stage=${encodeURIComponent(stage)}`
+      ).then(r => r.json());
       setEmpresas(res.companies ?? []);
       setContactos(res.contacts ?? []);
       setEventos(res.events ?? []);
