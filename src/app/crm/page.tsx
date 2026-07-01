@@ -104,10 +104,10 @@ const STAGE_LABELS: Record<string, string> = {
   respuesta_recibida: 'Respuesta recibida',
   en_conversacion: 'En conv.',
   'en conversación': 'En conv.',
-  entrevista: 'Entrevista',
   oferta: 'Oferta',
-  nuevo_cliente: 'Cliente',
-  descartado: 'Descartado',
+  nuevo_cliente: 'Contratado',
+  descartado: 'No avanzó',
+  entrevista: 'Entrevista',
 };
 
 const ACTIVITY_EMOJIS: Record<string, string> = {
@@ -1666,12 +1666,15 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
 
   const isBiz = userStage === 'emprendedor' || userStage === 'freelancer' || userStage === 'empresa';
   const PIPELINE_STAGES = [
-    { key: 'primer_contacto', label: 'Contactado' },
-    { key: 'seguimiento', label: 'Seguimiento' },
-    { key: 'respuesta_recibida', label: 'Respuesta' },
-    { key: 'entrevista', label: isBiz ? 'Reunión' : 'Entrevista' },
-    { key: 'oferta', label: isBiz ? 'Propuesta' : 'Oferta' },
-    { key: 'nuevo_cliente', label: isBiz ? 'Cliente' : 'Contratado' },
+    { key: 'primer_contacto', label: 'Contactado', emoji: '👋' },
+    { key: 'seguimiento', label: 'Seguimiento', emoji: '📩' },
+    { key: 'respuesta_recibida', label: 'Respuesta', emoji: '💬' },
+    { key: 'entrevista', label: isBiz ? 'Reunión' : 'Entrevista', emoji: '🎯' },
+  ];
+  const FINAL_STAGES = [
+    { key: 'oferta', label: isBiz ? 'Propuesta' : 'Oferta', emoji: '🔥', color: 'bg-orange-500' },
+    { key: 'nuevo_cliente', label: isBiz ? 'Cliente' : 'Contratado', emoji: isBiz ? '🤝' : '🎉', color: 'bg-[var(--color-pirai-500)]' },
+    { key: 'descartado', label: 'No avanzó', emoji: '✗', color: 'bg-gray-400' },
   ];
 
   const handleUpdateStage = async (stage: string) => {
@@ -1873,34 +1876,84 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
       </div>
 
-      {/* Pipeline stage selector */}
-      {c.stage !== 'sin_contactar' && (
-        <div className="flex gap-1.5 flex-wrap">
-          {PIPELINE_STAGES.map(s => {
-            const stageOrder = PIPELINE_STAGES.map(x => x.key);
-            const currentIdx = stageOrder.indexOf(c.stage ?? '');
-            const thisIdx = stageOrder.indexOf(s.key);
-            const isActive = s.key === c.stage;
-            const isPast = thisIdx < currentIdx;
-            return (
-              <button
-                key={s.key}
-                onClick={() => handleUpdateStage(s.key)}
-                disabled={updatingStage}
-                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
-                  isActive
-                    ? 'bg-[var(--color-pirai-500)] text-white'
-                    : isPast
-                    ? 'bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-200)]'
-                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
-                }`}
-              >
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Pipeline stepper */}
+      {c.stage !== 'sin_contactar' && (() => {
+        const isFinal = FINAL_STAGES.some(s => s.key === c.stage);
+        const finalStage = FINAL_STAGES.find(s => s.key === c.stage);
+        const hasFollowup = actividadesContacto.some(a => a.tipo === 'seguimiento');
+        const hasResponse = actividadesContacto.some(a => a.respuesta);
+        const hasEntrevista = actividadesContacto.some(a => a.tipo === 'entrevista');
+        let computedStage = 'primer_contacto';
+        if (hasFollowup) computedStage = 'seguimiento';
+        if (hasResponse) computedStage = 'respuesta_recibida';
+        if (hasEntrevista) computedStage = 'entrevista';
+        const stageKeys = PIPELINE_STAGES.map(s => s.key);
+        const computedIdx = stageKeys.indexOf(computedStage);
+        const storedIdx = stageKeys.indexOf(c.stage ?? '');
+        const activeIdx = isFinal ? PIPELINE_STAGES.length : Math.max(computedIdx, storedIdx);
+        return (
+          <div className="border border-[var(--color-brand-border)] rounded-xl p-3 bg-[var(--color-brand-gray)]">
+            <div className="flex items-center">
+              {PIPELINE_STAGES.map((stage, idx) => {
+                const isActive = idx === activeIdx;
+                const isPast = idx < activeIdx || isFinal;
+                return (
+                  <div key={stage.key} className="flex items-center flex-1">
+                    <button
+                      onClick={() => handleUpdateStage(stage.key)}
+                      disabled={updatingStage}
+                      className="flex flex-col items-center gap-0.5 flex-shrink-0 group"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
+                        isActive && !isFinal
+                          ? 'bg-[var(--color-pirai-500)] text-white shadow-md scale-110'
+                          : isPast
+                          ? 'bg-[var(--color-pirai-200)] text-[var(--color-pirai-700)]'
+                          : 'bg-white border border-gray-200 text-gray-400 group-hover:border-[var(--color-pirai-300)] group-hover:text-[var(--color-pirai-500)]'
+                      }`}>
+                        {isPast && !isActive ? '✓' : stage.emoji}
+                      </div>
+                      <span className={`text-[9px] leading-tight text-center max-w-[44px] ${
+                        isActive && !isFinal ? 'font-bold text-[var(--color-pirai-700)]' :
+                        isPast ? 'font-medium text-[var(--color-pirai-500)]' :
+                        'text-gray-400'
+                      }`}>{stage.label}</span>
+                    </button>
+                    {idx < PIPELINE_STAGES.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 mb-3 rounded ${
+                        idx < activeIdx || isFinal ? 'bg-[var(--color-pirai-300)]' : 'bg-gray-200'
+                      }`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Final stage badge */}
+            {isFinal && finalStage && (
+              <div className={`mt-3 flex items-center justify-center gap-2 py-2 rounded-xl text-white text-sm font-bold ${finalStage.color}`}>
+                {finalStage.emoji} {finalStage.label}
+              </div>
+            )}
+            {/* Final stage action buttons — show when at seguimiento or beyond */}
+            {!isFinal && activeIdx >= 1 && (
+              <div className="flex gap-2 mt-3 pt-2 border-t border-[var(--color-brand-border)]">
+                <button onClick={() => handleUpdateStage('oferta')} disabled={updatingStage}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 transition-colors">
+                  🔥 {isBiz ? 'Propuesta' : 'Oferta'}
+                </button>
+                <button onClick={() => handleUpdateStage('nuevo_cliente')} disabled={updatingStage}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold text-white bg-[var(--color-pirai-500)] hover:bg-[var(--color-pirai-600)] transition-colors">
+                  {isBiz ? '🤝 Cliente' : '🎉 Contratado'}
+                </button>
+                <button onClick={() => handleUpdateStage('descartado')} disabled={updatingStage}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-bold text-white bg-gray-400 hover:bg-gray-500 transition-colors">
+                  ✗ No avanzó
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Contact links */}
       <div className="space-y-2">
