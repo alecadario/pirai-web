@@ -99,7 +99,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 const STAGE_LABELS: Record<string, string> = {
   nuevo: 'Nuevo',
   sin_contactar: 'Sin contactar',
-  primer_contacto: 'Primer contacto',
+  primer_contacto: 'Contactado',
   seguimiento: 'Seguimiento',
   respuesta_recibida: 'Respuesta recibida',
   en_conversacion: 'En conv.',
@@ -1666,7 +1666,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
 
   const isBiz = userStage === 'emprendedor' || userStage === 'freelancer' || userStage === 'empresa';
   const PIPELINE_STAGES = [
-    { key: 'primer_contacto', label: 'Contacto' },
+    { key: 'primer_contacto', label: 'Contactado' },
     { key: 'seguimiento', label: 'Seguimiento' },
     { key: 'respuesta_recibida', label: 'Respuesta' },
     { key: 'entrevista', label: isBiz ? 'Reunión' : 'Entrevista' },
