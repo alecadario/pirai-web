@@ -99,7 +99,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 const STAGE_LABELS: Record<string, string> = {
   nuevo: 'Nuevo',
   sin_contactar: 'Sin contactar',
-  primer_contacto: '1er contacto',
+  primer_contacto: 'Primer contacto',
   seguimiento: 'Seguimiento',
   respuesta_recibida: 'Respuesta recibida',
   en_conversacion: 'En conv.',
