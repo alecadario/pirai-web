@@ -539,7 +539,7 @@ function SuggestedCompanyCard({ company, userId, onAdded }: { company: Suggested
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
-          rows: [{ name: company.name, industry: company.industry ?? '', country: company.country ?? '' }],
+          rows: [{ name: company.name, industry: company.industry ?? '', country: company.country ?? '', website: company.website ?? '' }],
         }),
       });
       if (res.ok) {
