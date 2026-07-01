@@ -951,6 +951,46 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
             </div>
           </div>
         )}
+
+        {/* Edit evento modal (also available from detail view) */}
+        {showEditEvento && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">Editar evento</h3>
+                <button onClick={() => { setShowEditEvento(null); setEventoForm(EVENT_FORM_EMPTY); }}><X className="w-5 h-5 text-gray-400" /></button>
+              </div>
+              <input value={eventoForm.name} onChange={e => setEventoForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre del evento *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-gray-500 mb-1 block">Fecha inicio</label><input type="date" value={eventoForm.date} onChange={e => setEventoForm(p => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+                <div><label className="text-[10px] text-gray-500 mb-1 block">Fecha fin</label><input type="date" value={eventoForm.end_date} onChange={e => setEventoForm(p => ({ ...p, end_date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-[10px] text-gray-500 mb-1 block">Hora</label><input type="time" value={eventoForm.time} onChange={e => setEventoForm(p => ({ ...p, time: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+                <div><label className="text-[10px] text-gray-500 mb-1 block">Duración (hs)</label><input type="number" min="0.5" step="0.5" value={eventoForm.duration} onChange={e => setEventoForm(p => ({ ...p, duration: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+              </div>
+              <select value={eventoForm.type} onChange={e => setEventoForm(p => ({ ...p, type: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+                <option value="presencial">Presencial</option>
+                <option value="online">Online</option>
+                <option value="hibrido">Híbrido</option>
+                <option value="otro">Otro</option>
+              </select>
+              <div><label className="text-[10px] text-gray-500 mb-1 block">Meta de contactos</label><input type="number" min="0" value={eventoForm.contactGoal} onChange={e => setEventoForm(p => ({ ...p, contactGoal: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <input value={eventoForm.country} onChange={e => setEventoForm(p => ({ ...p, country: e.target.value }))} placeholder="País" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+                <input value={eventoForm.city} onChange={e => setEventoForm(p => ({ ...p, city: e.target.value }))} placeholder="Ciudad" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+              <input value={eventoForm.location} onChange={e => setEventoForm(p => ({ ...p, location: e.target.value }))} placeholder="Lugar / dirección" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <textarea value={eventoForm.details} onChange={e => setEventoForm(p => ({ ...p, details: e.target.value }))} placeholder="Detalles adicionales" rows={3} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => { setShowEditEvento(null); setEventoForm(EVENT_FORM_EMPTY); }} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+                <button onClick={handleSaveEvento} disabled={savingEvento || !eventoForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                  {savingEvento ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
