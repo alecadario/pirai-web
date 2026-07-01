@@ -1658,6 +1658,30 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, onCl
   const [confirmDel, setConfirmDel] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showAllActs, setShowAllActs] = useState(false);
+  const [updatingStage, setUpdatingStage] = useState(false);
+
+  const PIPELINE_STAGES = [
+    { key: 'primer_contacto', label: 'Contacto' },
+    { key: 'seguimiento', label: 'Seguimiento' },
+    { key: 'respuesta_recibida', label: 'Respuesta' },
+    { key: 'entrevista', label: 'Entrevista' },
+    { key: 'oferta', label: 'Oferta' },
+    { key: 'nuevo_cliente', label: 'Contratado' },
+  ];
+
+  const handleUpdateStage = async (stage: string) => {
+    if (updatingStage || stage === c.stage) return;
+    setUpdatingStage(true);
+    try {
+      await fetch(`${BASE}/api/crm/contacto`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: c.id, userId, stage }),
+      });
+      onUpdate({ ...c, stage });
+    } catch {}
+    finally { setUpdatingStage(false); }
+  };
 
   // Message generator
   const [messageType, setMessageType] = useState('primer_contacto');
@@ -1844,10 +1868,32 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, onCl
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-4 h-4 text-gray-400" /></button>
       </div>
 
-      {/* Stage badge */}
-      {c.stage && (
-        <div>
-          <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]">{STAGE_LABELS[c.stage] ?? c.stage}</Badge>
+      {/* Pipeline stage selector */}
+      {c.stage !== 'sin_contactar' && (
+        <div className="flex gap-1.5 flex-wrap">
+          {PIPELINE_STAGES.map(s => {
+            const stageOrder = PIPELINE_STAGES.map(x => x.key);
+            const currentIdx = stageOrder.indexOf(c.stage ?? '');
+            const thisIdx = stageOrder.indexOf(s.key);
+            const isActive = s.key === c.stage;
+            const isPast = thisIdx < currentIdx;
+            return (
+              <button
+                key={s.key}
+                onClick={() => handleUpdateStage(s.key)}
+                disabled={updatingStage}
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                  isActive
+                    ? 'bg-[var(--color-pirai-500)] text-white'
+                    : isPast
+                    ? 'bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-200)]'
+                    : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600'
+                }`}
+              >
+                {s.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
