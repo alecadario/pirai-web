@@ -180,6 +180,7 @@ function CRMPageInner() {
   const [empresaFilter, setEmpresaFilter] = useState<EmpresaFilter>('todas');
   const [eventFilter, setEventFilter] = useState<EventFilter>('todos');
   const [userName, setUserName] = useState('');
+  const [userStage, setUserStage] = useState('');
   const [showNewEmpresa, setShowNewEmpresa] = useState(false);
   const [showNewContacto, setShowNewContacto] = useState(false);
   const [newEmpresaForm, setNewEmpresaForm] = useState({ name: '', industry: '', website: '', country: '', city: '', priority: 'media', status: 'investigando', objetivo: '' });
@@ -204,6 +205,7 @@ function CRMPageInner() {
           const a = JSON.parse(fields.onboarding_answers);
           diagnosis = a.diagnosis ?? '';
           stage = a.stage ?? '';
+          if (stage) setUserStage(stage);
           if (!fields.name && a.name) setUserName(a.name);
         }
       } catch {}
@@ -502,6 +504,7 @@ function CRMPageInner() {
                 BASE={BASE}
                 userId={userId ?? ''}
                 userName={userName}
+                userStage={userStage}
                 onClose={() => setSelected(null)}
                 onUpdate={(updated) => {
                   setContactos(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
@@ -1641,13 +1644,14 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
 
 // ─── Contacto Detail Panel ────────────────────────────────────────────────────
 
-function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, onClose, onUpdate, onDelete }: {
+function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, userStage, onClose, onUpdate, onDelete }: {
   c: Contacto;
   empresas: Empresa[];
   actividades: Actividad[];
   BASE: string;
   userId: string;
   userName: string;
+  userStage?: string;
   onClose: () => void;
   onUpdate: (c: Contacto) => void;
   onDelete: (id: string) => void;
@@ -1660,13 +1664,14 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, onCl
   const [showAllActs, setShowAllActs] = useState(false);
   const [updatingStage, setUpdatingStage] = useState(false);
 
+  const isBiz = userStage === 'emprendedor' || userStage === 'freelancer' || userStage === 'empresa';
   const PIPELINE_STAGES = [
     { key: 'primer_contacto', label: 'Contacto' },
     { key: 'seguimiento', label: 'Seguimiento' },
     { key: 'respuesta_recibida', label: 'Respuesta' },
-    { key: 'entrevista', label: 'Entrevista' },
-    { key: 'oferta', label: 'Oferta' },
-    { key: 'nuevo_cliente', label: 'Contratado' },
+    { key: 'entrevista', label: isBiz ? 'Reunión' : 'Entrevista' },
+    { key: 'oferta', label: isBiz ? 'Propuesta' : 'Oferta' },
+    { key: 'nuevo_cliente', label: isBiz ? 'Cliente' : 'Contratado' },
   ];
 
   const handleUpdateStage = async (stage: string) => {
