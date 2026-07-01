@@ -180,6 +180,12 @@ function CRMPageInner() {
   const [empresaFilter, setEmpresaFilter] = useState<EmpresaFilter>('todas');
   const [eventFilter, setEventFilter] = useState<EventFilter>('todos');
   const [userName, setUserName] = useState('');
+  const [showNewEmpresa, setShowNewEmpresa] = useState(false);
+  const [showNewContacto, setShowNewContacto] = useState(false);
+  const [newEmpresaForm, setNewEmpresaForm] = useState({ name: '', industry: '', website: '', country: '', city: '', priority: 'media', status: 'investigando', objetivo: '' });
+  const [newContactoForm, setNewContactoForm] = useState({ name: '', title: '', email: '', phone: '', linkedin_url: '', stage: 'sin_contactar', empresa_id: '', language: 'es' });
+  const [inlineEmpresa, setInlineEmpresa] = useState({ name: '', industry: '' });
+  const [savingNew, setSavingNew] = useState(false);
   const userId = getUserId();
   const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
 
@@ -288,6 +294,48 @@ function CRMPageInner() {
     return { icon: '✨', text: 'Buen trabajo conectando. Revisá si podés convertir algún contacto de evento en una oportunidad real.' };
   };
 
+  const handleCreateEmpresa = async () => {
+    if (!newEmpresaForm.name.trim()) return;
+    setSavingNew(true);
+    try {
+      const res = await fetch(`${BASE}/api/crm/empresa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...newEmpresaForm }),
+      });
+      if (res.ok) {
+        setShowNewEmpresa(false);
+        setNewEmpresaForm({ name: '', industry: '', website: '', country: '', city: '', priority: 'media', status: 'investigando', objetivo: '' });
+        load();
+      }
+    } finally { setSavingNew(false); }
+  };
+
+  const handleCreateContacto = async () => {
+    if (!newContactoForm.name.trim()) return;
+    setSavingNew(true);
+    try {
+      let empresaId = newContactoForm.empresa_id;
+      if (empresaId === '__new__') {
+        if (!inlineEmpresa.name.trim()) { alert('Escribí el nombre de la empresa'); setSavingNew(false); return; }
+        const er = await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresa.name, industry: inlineEmpresa.industry, priority: 'media', status: 'investigando' }) });
+        const ed = await er.json();
+        empresaId = ed.id || ed.empresa?.id || '';
+        setInlineEmpresa({ name: '', industry: '' });
+      }
+      const res = await fetch(`${BASE}/api/crm/contacto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name: newContactoForm.name, title: newContactoForm.title, email: newContactoForm.email, phone: newContactoForm.phone, linkedinUrl: newContactoForm.linkedin_url, stage: newContactoForm.stage, empresaId, language: newContactoForm.language }),
+      });
+      if (res.ok) {
+        setShowNewContacto(false);
+        setNewContactoForm({ name: '', title: '', email: '', phone: '', linkedin_url: '', stage: 'sin_contactar', empresa_id: '', language: 'es' });
+        load();
+      }
+    } finally { setSavingNew(false); }
+  };
+
   return (
     <AppShell>
       <div className="flex h-full min-h-screen">
@@ -297,9 +345,14 @@ function CRMPageInner() {
           <div className="bg-white border-b border-[var(--color-brand-border)] px-6 pt-6 pb-0">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-xl font-bold text-[var(--color-brand-dark)]">CRM</h1>
-              <button className="flex items-center gap-2 bg-[var(--color-pirai-500)] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[var(--color-pirai-600)] transition-colors">
-                <Plus className="w-4 h-4" /> Nuevo
-              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setShowNewEmpresa(true)} className="flex items-center gap-1.5 bg-[var(--color-pirai-500)] text-white text-sm font-semibold px-3 py-2 rounded-xl hover:bg-[var(--color-pirai-600)] transition-colors">
+                  <Plus className="w-4 h-4" /> Empresa
+                </button>
+                <button onClick={() => setShowNewContacto(true)} className="flex items-center gap-1.5 bg-white text-[var(--color-pirai-600)] text-sm font-semibold px-3 py-2 rounded-xl border border-[var(--color-pirai-300)] hover:bg-[var(--color-pirai-50)] transition-colors">
+                  <Plus className="w-4 h-4" /> Contacto
+                </button>
+              </div>
             </div>
 
             {/* Search */}
@@ -463,6 +516,90 @@ function CRMPageInner() {
           )}
         </div>
       </div>
+
+      {/* ── Modal: Nueva empresa ── */}
+      {showNewEmpresa && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">Nueva empresa</h3>
+              <button onClick={() => setShowNewEmpresa(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <input value={newEmpresaForm.name} onChange={e => setNewEmpresaForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <input value={newEmpresaForm.industry} onChange={e => setNewEmpresaForm(p => ({ ...p, industry: e.target.value }))} placeholder="Industria" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <input value={newEmpresaForm.website} onChange={e => setNewEmpresaForm(p => ({ ...p, website: e.target.value }))} placeholder="Sitio web" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <div className="grid grid-cols-2 gap-2">
+              <input value={newEmpresaForm.country} onChange={e => setNewEmpresaForm(p => ({ ...p, country: e.target.value }))} placeholder="País" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <input value={newEmpresaForm.city} onChange={e => setNewEmpresaForm(p => ({ ...p, city: e.target.value }))} placeholder="Ciudad" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            </div>
+            <select value={newEmpresaForm.priority} onChange={e => setNewEmpresaForm(p => ({ ...p, priority: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              <option value="alta">Prioridad: Alta</option>
+              <option value="media">Prioridad: Media</option>
+              <option value="baja">Prioridad: Baja</option>
+            </select>
+            <select value={newEmpresaForm.status} onChange={e => setNewEmpresaForm(p => ({ ...p, status: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <textarea value={newEmpresaForm.objetivo} onChange={e => setNewEmpresaForm(p => ({ ...p, objetivo: e.target.value }))} placeholder="¿Cuál es tu objetivo con esta empresa?" rows={3} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowNewEmpresa(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+              <button onClick={handleCreateEmpresa} disabled={savingNew || !newEmpresaForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                {savingNew ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Nuevo contacto ── */}
+      {showNewContacto && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">Nuevo contacto</h3>
+              <button onClick={() => setShowNewContacto(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <input value={newContactoForm.name} onChange={e => setNewContactoForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <input value={newContactoForm.title} onChange={e => setNewContactoForm(p => ({ ...p, title: e.target.value }))} placeholder="Cargo" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <input type="email" value={newContactoForm.email} onChange={e => setNewContactoForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            {newContactoForm.email && contactos.some(c => c.email?.toLowerCase() === newContactoForm.email.toLowerCase()) && (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">⚠️ Ya tenés un contacto con ese email.</p>
+            )}
+            <input type="tel" value={newContactoForm.phone} onChange={e => setNewContactoForm(p => ({ ...p, phone: e.target.value }))} placeholder="Teléfono" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <input value={newContactoForm.linkedin_url} onChange={e => setNewContactoForm(p => ({ ...p, linkedin_url: e.target.value }))} placeholder="LinkedIn URL" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <select value={newContactoForm.language} onChange={e => setNewContactoForm(p => ({ ...p, language: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              <option value="es">Idioma: Español</option>
+              <option value="en">Idioma: Inglés</option>
+              <option value="pt">Idioma: Portugués</option>
+              <option value="fr">Idioma: Francés</option>
+              <option value="ar">Idioma: Árabe</option>
+              <option value="de">Idioma: Alemán</option>
+              <option value="it">Idioma: Italiano</option>
+            </select>
+            <select value={newContactoForm.empresa_id} onChange={e => { setNewContactoForm(p => ({ ...p, empresa_id: e.target.value })); if (e.target.value !== '__new__') setInlineEmpresa({ name: '', industry: '' }); }} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              <option value="">Sin empresa</option>
+              <option value="__new__">＋ Crear nueva empresa</option>
+              {empresas.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+            {newContactoForm.empresa_id === '__new__' && (
+              <div className="bg-[var(--color-brand-gray)] rounded-xl p-3 space-y-2 border border-dashed border-gray-300">
+                <p className="text-xs font-medium text-gray-500">Nueva empresa</p>
+                <input value={inlineEmpresa.name} onChange={e => setInlineEmpresa(p => ({ ...p, name: e.target.value }))} placeholder="Nombre de la empresa *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+                <input value={inlineEmpresa.industry} onChange={e => setInlineEmpresa(p => ({ ...p, industry: e.target.value }))} placeholder="Industria" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+            )}
+            <select value={newContactoForm.stage} onChange={e => setNewContactoForm(p => ({ ...p, stage: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              {Object.entries(STAGE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowNewContacto(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+              <button onClick={handleCreateContacto} disabled={savingNew || !newContactoForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                {savingNew ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
