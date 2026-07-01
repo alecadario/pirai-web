@@ -470,6 +470,7 @@ function CRMPageInner() {
                 userId={userId ?? ''}
                 onDeleteEvento={(id) => setEventos(prev => prev.filter(e => e.id !== id))}
                 onContactAdded={load}
+                onEventAdded={load}
               />
             )}
           </div>
@@ -525,6 +526,37 @@ function CRMPageInner() {
               <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">Nueva empresa</h3>
               <button onClick={() => setShowNewEmpresa(false)}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
+            {/* CSV import */}
+            <div className="flex items-center gap-2 bg-[var(--color-brand-gray)] rounded-xl px-3 py-2.5 border border-dashed border-gray-300">
+              <div className="flex-1 text-xs text-gray-500">Importar desde CSV</div>
+              <button
+                onClick={() => { const csv = 'name,industry,website,country,city,priority,status,objetivo\nAcme Inc,Tecnología,acme.com,Argentina,Buenos Aires,alta,investigando,Conseguir entrevista'; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'template_empresas.csv'; a.click(); }}
+                className="text-[10px] font-semibold text-[var(--color-pirai-600)] hover:underline whitespace-nowrap"
+              >↓ Descargar template</button>
+              <label className="cursor-pointer text-[10px] font-semibold bg-[var(--color-pirai-500)] text-white px-2 py-1 rounded-lg hover:bg-[var(--color-pirai-600)] transition-colors whitespace-nowrap">
+                Subir CSV
+                <input type="file" accept=".csv" className="hidden" onChange={async e => {
+                  const file = e.target.files?.[0]; if (!file) return;
+                  const text = await file.text();
+                  const lines = text.trim().split('\n').filter(Boolean);
+                  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                  const rows = lines.slice(1);
+                  setSavingNew(true);
+                  for (const row of rows) {
+                    const vals = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                    const obj: Record<string, string> = {};
+                    headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
+                    if (!obj.name) continue;
+                    await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: obj.name, industry: obj.industry, website: obj.website, country: obj.country, city: obj.city, priority: obj.priority || 'media', status: obj.status || 'investigando', objetivo: obj.objetivo }) }).catch(() => {});
+                  }
+                  setSavingNew(false);
+                  setShowNewEmpresa(false);
+                  load();
+                  e.target.value = '';
+                }} />
+              </label>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-400"><div className="flex-1 h-px bg-gray-200" />o completá el formulario<div className="flex-1 h-px bg-gray-200" /></div>
             <input value={newEmpresaForm.name} onChange={e => setNewEmpresaForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
             <input value={newEmpresaForm.industry} onChange={e => setNewEmpresaForm(p => ({ ...p, industry: e.target.value }))} placeholder="Industria" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
             <input value={newEmpresaForm.website} onChange={e => setNewEmpresaForm(p => ({ ...p, website: e.target.value }))} placeholder="Sitio web" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
@@ -559,6 +591,37 @@ function CRMPageInner() {
               <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">Nuevo contacto</h3>
               <button onClick={() => setShowNewContacto(false)}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
+            {/* CSV import */}
+            <div className="flex items-center gap-2 bg-[var(--color-brand-gray)] rounded-xl px-3 py-2.5 border border-dashed border-gray-300">
+              <div className="flex-1 text-xs text-gray-500">Importar desde CSV</div>
+              <button
+                onClick={() => { const csv = 'name,title,email,phone,linkedin_url,stage,language\nJuan Pérez,Product Manager,juan@acme.com,+54911234567,https://linkedin.com/in/juanperez,sin_contactar,es'; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'template_contactos.csv'; a.click(); }}
+                className="text-[10px] font-semibold text-[var(--color-pirai-600)] hover:underline whitespace-nowrap"
+              >↓ Descargar template</button>
+              <label className="cursor-pointer text-[10px] font-semibold bg-[var(--color-pirai-500)] text-white px-2 py-1 rounded-lg hover:bg-[var(--color-pirai-600)] transition-colors whitespace-nowrap">
+                Subir CSV
+                <input type="file" accept=".csv" className="hidden" onChange={async e => {
+                  const file = e.target.files?.[0]; if (!file) return;
+                  const text = await file.text();
+                  const lines = text.trim().split('\n').filter(Boolean);
+                  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                  const rows = lines.slice(1);
+                  setSavingNew(true);
+                  for (const row of rows) {
+                    const vals = row.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                    const obj: Record<string, string> = {};
+                    headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
+                    if (!obj.name) continue;
+                    await fetch(`${BASE}/api/crm/contacto`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: obj.name, title: obj.title, email: obj.email, phone: obj.phone, linkedinUrl: obj.linkedin_url, stage: obj.stage || 'sin_contactar', language: obj.language || 'es' }) }).catch(() => {});
+                  }
+                  setSavingNew(false);
+                  setShowNewContacto(false);
+                  load();
+                  e.target.value = '';
+                }} />
+              </label>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-400"><div className="flex-1 h-px bg-gray-200" />o completá el formulario<div className="flex-1 h-px bg-gray-200" /></div>
             <input value={newContactoForm.name} onChange={e => setNewContactoForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
             <input value={newContactoForm.title} onChange={e => setNewContactoForm(p => ({ ...p, title: e.target.value }))} placeholder="Cargo" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
             <input type="email" value={newContactoForm.email} onChange={e => setNewContactoForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
@@ -635,7 +698,9 @@ function buildGoogleCalendarUrl(event: Evento): string {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFilter, coachTip, BASE, userId, onDeleteEvento, onContactAdded }: {
+const EVENT_FORM_EMPTY = { name: '', date: '', time: '', duration: '2', end_date: '', type: 'presencial', contactGoal: '5', country: '', city: '', location: '', details: '' };
+
+function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFilter, coachTip, BASE, userId, onDeleteEvento, onContactAdded, onEventAdded }: {
   eventos: Evento[];
   contactos: Contacto[];
   actividades: Actividad[];
@@ -646,6 +711,7 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
   userId: string;
   onDeleteEvento: (id: string) => void;
   onContactAdded: () => void;
+  onEventAdded: () => void;
 }) {
   const today = new Date().toISOString().split('T')[0];
   const [selectedEvent, setSelectedEvent] = useState<Evento | null>(null);
@@ -655,6 +721,10 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
   const [savingContact, setSavingContact] = useState(false);
   const [confirmDelEvento, setConfirmDelEvento] = useState<Evento | null>(null);
   const [deletingEvento, setDeletingEvento] = useState(false);
+  const [showNewEvento, setShowNewEvento] = useState(false);
+  const [showEditEvento, setShowEditEvento] = useState<Evento | null>(null);
+  const [eventoForm, setEventoForm] = useState(EVENT_FORM_EMPTY);
+  const [savingEvento, setSavingEvento] = useState(false);
 
   const totalGoal = eventos.reduce((s, e) => s + (e.contactGoal || 0), 0);
   const totalMet = eventos.reduce((s, e) => s + (e.contactsMet || 0), 0);
@@ -708,6 +778,32 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
     } finally { setDeletingEvento(false); }
   };
 
+  const handleSaveEvento = async () => {
+    if (!eventoForm.name.trim()) return;
+    setSavingEvento(true);
+    try {
+      if (showEditEvento) {
+        await fetch(`${BASE}/api/events`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId: showEditEvento.id, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }),
+        });
+        setShowEditEvento(null);
+        if (selectedEvent?.id === showEditEvento.id) setSelectedEvent(prev => prev ? { ...prev, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details } : null);
+        onEventAdded();
+      } else {
+        await fetch(`${BASE}/api/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }),
+        });
+        setShowNewEvento(false);
+        onEventAdded();
+      }
+      setEventoForm(EVENT_FORM_EMPTY);
+    } finally { setSavingEvento(false); }
+  };
+
   // ── Event detail view ──
   if (selectedEvent) {
     const event = selectedEvent;
@@ -738,6 +834,12 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
               )}
             </div>
           </div>
+          <button
+            onClick={() => { setEventoForm({ name: event.name, date: event.date ?? '', time: event.time ?? '', duration: String(event.duration ?? 2), end_date: event.end_date ?? '', type: event.type ?? 'presencial', contactGoal: String(event.contactGoal ?? 5), country: event.country ?? '', city: event.city ?? '', location: event.location ?? '', details: event.details ?? '' }); setShowEditEvento(event); }}
+            className="p-2 hover:bg-[var(--color-pirai-50)] rounded-lg text-gray-400 hover:text-[var(--color-pirai-500)] transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setConfirmDelEvento(event)}
             className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
@@ -856,9 +958,17 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
   // ── Event list view ──
   return (
     <div className="space-y-4">
-      <div className="bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-3 flex items-start gap-2.5">
-        <span className="text-lg mt-0.5">{coachTip.icon}</span>
-        <p className="text-sm text-[var(--color-pirai-800)] leading-relaxed">{coachTip.text}</p>
+      <div className="flex items-center justify-between">
+        <div className="bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-3 flex items-start gap-2.5 flex-1 mr-2">
+          <span className="text-lg mt-0.5">{coachTip.icon}</span>
+          <p className="text-sm text-[var(--color-pirai-800)] leading-relaxed">{coachTip.text}</p>
+        </div>
+        <button
+          onClick={() => { setEventoForm(EVENT_FORM_EMPTY); setShowNewEvento(true); }}
+          className="shrink-0 flex items-center gap-1.5 bg-[var(--color-pirai-500)] text-white text-sm font-semibold px-3 py-2 rounded-xl hover:bg-[var(--color-pirai-600)] transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Evento
+        </button>
       </div>
 
       {eventos.length > 0 && (
@@ -962,12 +1072,20 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
                       <Calendar className="w-3.5 h-3.5" /> Agendar
                     </a>
                   </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); setConfirmDelEvento(event); }}
-                    className="text-gray-300 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={e => { e.stopPropagation(); setEventoForm({ name: event.name, date: event.date ?? '', time: event.time ?? '', duration: String(event.duration ?? 2), end_date: event.end_date ?? '', type: event.type ?? 'presencial', contactGoal: String(event.contactGoal ?? 5), country: event.country ?? '', city: event.city ?? '', location: event.location ?? '', details: event.details ?? '' }); setShowEditEvento(event); }}
+                      className="text-gray-300 hover:text-[var(--color-pirai-500)] transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setConfirmDelEvento(event); }}
+                      className="text-gray-300 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -985,6 +1103,61 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
               <button onClick={() => setConfirmDelEvento(null)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
               <button onClick={handleDeleteEvento} disabled={deletingEvento} className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50">
                 {deletingEvento ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Nuevo / Editar evento modal */}
+      {(showNewEvento || showEditEvento) && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">{showEditEvento ? 'Editar evento' : 'Nuevo evento'}</h3>
+              <button onClick={() => { setShowNewEvento(false); setShowEditEvento(null); setEventoForm(EVENT_FORM_EMPTY); }}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <input value={eventoForm.name} onChange={e => setEventoForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre del evento *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500 mb-1 block">Fecha inicio</label>
+                <input type="date" value={eventoForm.date} onChange={e => setEventoForm(p => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 mb-1 block">Fecha fin</label>
+                <input type="date" value={eventoForm.end_date} onChange={e => setEventoForm(p => ({ ...p, end_date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-500 mb-1 block">Hora</label>
+                <input type="time" value={eventoForm.time} onChange={e => setEventoForm(p => ({ ...p, time: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-500 mb-1 block">Duración (hs)</label>
+                <input type="number" min="0.5" step="0.5" value={eventoForm.duration} onChange={e => setEventoForm(p => ({ ...p, duration: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+            </div>
+            <select value={eventoForm.type} onChange={e => setEventoForm(p => ({ ...p, type: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              <option value="presencial">Presencial</option>
+              <option value="online">Online</option>
+              <option value="hibrido">Híbrido</option>
+              <option value="otro">Otro</option>
+            </select>
+            <div>
+              <label className="text-[10px] text-gray-500 mb-1 block">Meta de contactos</label>
+              <input type="number" min="0" value={eventoForm.contactGoal} onChange={e => setEventoForm(p => ({ ...p, contactGoal: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input value={eventoForm.country} onChange={e => setEventoForm(p => ({ ...p, country: e.target.value }))} placeholder="País" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <input value={eventoForm.city} onChange={e => setEventoForm(p => ({ ...p, city: e.target.value }))} placeholder="Ciudad" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            </div>
+            <input value={eventoForm.location} onChange={e => setEventoForm(p => ({ ...p, location: e.target.value }))} placeholder="Lugar / dirección" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <textarea value={eventoForm.details} onChange={e => setEventoForm(p => ({ ...p, details: e.target.value }))} placeholder="Detalles adicionales" rows={3} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => { setShowNewEvento(false); setShowEditEvento(null); setEventoForm(EVENT_FORM_EMPTY); }} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+              <button onClick={handleSaveEvento} disabled={savingEvento || !eventoForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                {savingEvento ? 'Guardando...' : showEditEvento ? 'Guardar cambios' : 'Crear evento'}
               </button>
             </div>
           </div>
@@ -1775,6 +1948,16 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, onCl
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] text-[var(--color-pirai-700)] hover:bg-[var(--color-pirai-100)] transition-colors"
                   >
                     <Mail className="w-3 h-3" /> Abrir email
+                  </a>
+                )}
+                {c.phone && (
+                  <a
+                    href={`https://wa.me/${c.phone.replace(/[^\d+]/g, '').replace(/^\+/, '')}?text=${encodeURIComponent(generatedMsg)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 transition-colors"
+                  >
+                    <Phone className="w-3 h-3" /> WhatsApp
                   </a>
                 )}
               </div>
