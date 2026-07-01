@@ -58,6 +58,8 @@ interface Evento {
   details?: string;
   contactGoal?: number;
   contactsMet?: number;
+  location?: string;
+  duration?: number;
 }
 
 interface Actividad {
@@ -260,9 +262,18 @@ function CRMPageInner() {
       })).filter(g => g.empresas.length > 0);
 
   // ── Contacto list logic ──
-  const sortedContactos = [...contactos]
+  const CONTACTED_STAGES = new Set(['primer_contacto', 'seguimiento', 'respuesta_recibida', 'en_conversacion', 'en conversación', 'entrevista', 'oferta', 'nuevo_cliente']);
+
+  const filteredContactos = [...contactos]
     .filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.empresaNombre?.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => alpha(a.name, b.name));
+
+  const contactoGroups = search
+    ? [{ key: 'all', label: '', contactos: filteredContactos }]
+    : [
+        { key: 'contactados', label: '✉️ Contactados', contactos: filteredContactos.filter(c => CONTACTED_STAGES.has(c.stage ?? '')) },
+        { key: 'sin_contactar', label: '👤 Sin contactar', contactos: filteredContactos.filter(c => !CONTACTED_STAGES.has(c.stage ?? '')) },
+      ].filter(g => g.contactos.length > 0);
 
   // ── Networking coach tip ──
   const getNetworkingCoachTip = () => {
@@ -377,12 +388,21 @@ function CRMPageInner() {
                 </div>
               )
             ) : tab === 'contactos' ? (
-              sortedContactos.length === 0 ? (
+              filteredContactos.length === 0 ? (
                 <EmptyState label="Sin contactos aún" sub="Agregá contactos para hacer seguimiento." />
               ) : (
-                <div className="space-y-2">
-                  {sortedContactos.map(c => (
-                    <ContactoRow key={c.id} c={c} active={(selected as Contacto)?.id === c.id} onClick={() => setSelected(c)} />
+                <div className="space-y-6">
+                  {contactoGroups.map(group => (
+                    <div key={group.key}>
+                      {group.label && (
+                        <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-2 px-1">{group.label}</p>
+                      )}
+                      <div className="space-y-2">
+                        {group.contactos.map(c => (
+                          <ContactoRow key={c.id} c={c} active={(selected as Contacto)?.id === c.id} onClick={() => setSelected(c)} />
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )
@@ -395,6 +415,10 @@ function CRMPageInner() {
                 eventFilter={eventFilter}
                 setEventFilter={setEventFilter}
                 coachTip={getNetworkingCoachTip()}
+                BASE={BASE}
+                userId={userId ?? ''}
+                onDeleteEvento={(id) => setEventos(prev => prev.filter(e => e.id !== id))}
+                onContactAdded={load}
               />
             )}
           </div>
@@ -447,15 +471,56 @@ function CRMPageInner() {
 
 // ─── Eventos Panel ────────────────────────────────────────────────────────────
 
-function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFilter, coachTip }: {
+function buildGoogleCalendarUrl(event: Evento): string {
+  const params = new URLSearchParams();
+  params.set('action', 'TEMPLATE');
+  params.set('text', event.name || 'Evento de networking');
+  const durationHours = parseFloat(String(event.duration ?? 2)) || 2;
+  if (event.date) {
+    if (event.time) {
+      const d = event.date.replace(/-/g, '');
+      const t = event.time.replace(/:/g, '') + '00';
+      const startDt = new Date(`${event.date}T${event.time}:00`);
+      const endDt = new Date(startDt.getTime() + durationHours * 3600000);
+      const endD = endDt.toISOString().split('T')[0].replace(/-/g, '');
+      const endT = endDt.toTimeString().slice(0, 5).replace(/:/g, '') + '00';
+      params.set('dates', `${d}T${t}/${endD}T${endT}`);
+    } else {
+      const d = event.date.replace(/-/g, '');
+      const endDateStr = event.end_date && event.end_date !== event.date ? event.end_date : event.date;
+      const nextDay = new Date(endDateStr);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const nd = nextDay.toISOString().split('T')[0].replace(/-/g, '');
+      params.set('dates', `${d}/${nd}`);
+    }
+  }
+  const locationStr = [event.location, event.city, event.country].filter(Boolean).join(', ');
+  if (locationStr) params.set('location', locationStr);
+  if (event.details) params.set('details', event.details);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFilter, coachTip, BASE, userId, onDeleteEvento, onContactAdded }: {
   eventos: Evento[];
   contactos: Contacto[];
   actividades: Actividad[];
   eventFilter: EventFilter;
   setEventFilter: (f: EventFilter) => void;
   coachTip: { icon: string; text: string };
+  BASE: string;
+  userId: string;
+  onDeleteEvento: (id: string) => void;
+  onContactAdded: () => void;
 }) {
   const today = new Date().toISOString().split('T')[0];
+  const [selectedEvent, setSelectedEvent] = useState<Evento | null>(null);
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [newContactEvent, setNewContactEvent] = useState<Evento | null>(null);
+  const [newContactForm, setNewContactForm] = useState({ name: '', title: '', email: '', phone: '', linkedin_url: '' });
+  const [savingContact, setSavingContact] = useState(false);
+  const [confirmDelEvento, setConfirmDelEvento] = useState<Evento | null>(null);
+  const [deletingEvento, setDeletingEvento] = useState(false);
+
   const totalGoal = eventos.reduce((s, e) => s + (e.contactGoal || 0), 0);
   const totalMet = eventos.reduce((s, e) => s + (e.contactsMet || 0), 0);
   const overallProgress = totalGoal > 0 ? Math.min(100, Math.round((totalMet / totalGoal) * 100)) : 0;
@@ -471,18 +536,196 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
   if (eventFilter === 'hoy') filtered = eventos.filter(e => e.date === today);
   else if (eventFilter === 'proximos') filtered = eventos.filter(e => e.date && e.date > today);
   else if (eventFilter === 'pasados') filtered = eventos.filter(e => !e.date || e.date < today);
-  // sort ascending (nearest first)
   filtered.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
+  const handleSaveContact = async () => {
+    if (!newContactForm.name.trim() || !newContactEvent) return;
+    setSavingContact(true);
+    try {
+      await fetch(`${BASE}/api/crm/contacto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          name: newContactForm.name.trim(),
+          title: newContactForm.title.trim(),
+          email: newContactForm.email.trim(),
+          phone: newContactForm.phone.trim(),
+          linkedinUrl: newContactForm.linkedin_url.trim(),
+          stage: 'primer_contacto',
+          eventSource: newContactEvent.name,
+        }),
+      });
+      setShowNewContact(false);
+      setNewContactForm({ name: '', title: '', email: '', phone: '', linkedin_url: '' });
+      onContactAdded();
+    } finally { setSavingContact(false); }
+  };
+
+  const handleDeleteEvento = async () => {
+    if (!confirmDelEvento) return;
+    setDeletingEvento(true);
+    try {
+      await fetch(`${BASE}/api/events`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, eventId: confirmDelEvento.id }) });
+      if (selectedEvent?.id === confirmDelEvento.id) setSelectedEvent(null);
+      onDeleteEvento(confirmDelEvento.id);
+      setConfirmDelEvento(null);
+    } finally { setDeletingEvento(false); }
+  };
+
+  // ── Event detail view ──
+  if (selectedEvent) {
+    const event = selectedEvent;
+    const eventContacts = contactos.filter(c => c.eventSource === event.name);
+    const progress = (event.contactGoal ?? 0) > 0 ? Math.min(100, Math.round(((event.contactsMet ?? 0) / (event.contactGoal ?? 1)) * 100)) : 0;
+    const isComplete = (event.contactsMet ?? 0) >= (event.contactGoal ?? 1) && (event.contactGoal ?? 0) > 0;
+    const typeLabel = EVENT_TYPE_LABELS[event.type ?? ''] || event.type || '';
+
+    return (
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-[var(--color-brand-gray)] rounded-lg">
+            <ChevronRight className="w-5 h-5 text-gray-600 rotate-180" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-[var(--color-brand-dark)] truncate">{event.name}</h2>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {event.date && (
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> {event.date}{event.time ? ` · ${event.time}` : ''}
+                </span>
+              )}
+              {typeLabel && (
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${event.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]'}`}>
+                  {typeLabel}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setConfirmDelEvento(event)}
+            className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Progress */}
+        <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-gray-700">Meta de contactos</p>
+            <p className="text-sm font-bold text-[var(--color-pirai-600)]">{event.contactsMet ?? 0} / {event.contactGoal ?? 0}</p>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className={`h-2.5 rounded-full transition-all ${isComplete ? 'bg-[var(--color-pirai-500)]' : 'bg-[var(--color-pirai-600)]'}`} style={{ width: `${progress}%` }} />
+          </div>
+          <p className="text-xs text-gray-400 mt-1">{isComplete ? '¡Meta cumplida!' : `${progress}% completado`}</p>
+        </div>
+
+        {/* Location / details */}
+        {(event.location || event.city || event.country || event.details) && (
+          <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm space-y-2">
+            {(event.location || event.city || event.country) && (
+              <p className="text-sm text-gray-600">📍 {[event.location, event.city, event.country].filter(Boolean).join(', ')}</p>
+            )}
+            {event.details && <p className="text-sm text-gray-600 whitespace-pre-line">{event.details}</p>}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setNewContactEvent(event); setShowNewContact(true); }}
+            className="flex-1 bg-[var(--color-pirai-600)] text-white px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[var(--color-pirai-700)]"
+          >
+            <Plus className="w-4 h-4" /> Conocí a alguien
+          </button>
+          <a
+            href={buildGoogleCalendarUrl(event)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-[var(--color-turquesa-50)] text-[var(--color-turquesa-600)] px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[var(--color-turquesa-100)] border border-[var(--color-turquesa-200)] transition-colors"
+          >
+            <Calendar className="w-4 h-4" /> Agendar
+          </a>
+        </div>
+
+        {/* Contacts from event */}
+        <div>
+          <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-2">Contactos ({eventContacts.length})</p>
+          {eventContacts.length === 0 ? (
+            <div className="bg-[var(--color-brand-gray)] rounded-2xl p-5 text-center">
+              <p className="text-sm text-gray-400">Todavía no registraste contactos de este evento.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {eventContacts.map(c => (
+                <div key={c.id} className="bg-white rounded-xl p-3 border border-[var(--color-brand-border)] flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-pirai-400)] to-[var(--color-turquesa-500)] flex items-center justify-center text-white font-bold text-xs shrink-0">
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--color-brand-dark)] truncate">{c.name}</p>
+                    {c.title && <p className="text-xs text-gray-500 truncate">{c.title}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Delete confirm */}
+        {confirmDelEvento && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <p className="font-semibold text-[var(--color-brand-dark)] mb-2">¿Eliminar evento?</p>
+              <p className="text-sm text-gray-500 mb-4">Se eliminará <strong>{confirmDelEvento.name}</strong>. Esta acción no se puede deshacer.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmDelEvento(null)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+                <button onClick={handleDeleteEvento} disabled={deletingEvento} className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50">
+                  {deletingEvento ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* New contact modal */}
+        {showNewContact && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-[var(--color-brand-dark)]">Conocí a alguien en {newContactEvent?.name}</p>
+                <button onClick={() => setShowNewContact(false)}><X className="w-4 h-4 text-gray-400" /></button>
+              </div>
+              {(['name', 'title', 'email', 'phone', 'linkedin_url'] as const).map(field => (
+                <input key={field} value={newContactForm[field]} onChange={e => setNewContactForm(p => ({ ...p, [field]: e.target.value }))}
+                  placeholder={{ name: 'Nombre *', title: 'Cargo', email: 'Email', phone: 'Teléfono', linkedin_url: 'LinkedIn URL' }[field]}
+                  className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+                />
+              ))}
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setShowNewContact(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600">Cancelar</button>
+                <button onClick={handleSaveContact} disabled={savingContact || !newContactForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                  {savingContact ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Event list view ──
   return (
     <div className="space-y-4">
-      {/* Coach tip */}
       <div className="bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-3 flex items-start gap-2.5">
         <span className="text-lg mt-0.5">{coachTip.icon}</span>
         <p className="text-sm text-[var(--color-pirai-800)] leading-relaxed">{coachTip.text}</p>
       </div>
 
-      {/* Overall progress */}
       {eventos.length > 0 && (
         <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
           <div className="flex items-center justify-between mb-2">
@@ -496,26 +739,17 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
         </div>
       )}
 
-      {/* Sub-filter tabs */}
       {eventos.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
           {eventTabs.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setEventFilter(t.key)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                eventFilter === t.key
-                  ? 'bg-[var(--color-pirai-500)] text-white'
-                  : 'bg-[var(--color-brand-gray)] text-gray-600 hover:bg-gray-200'
-              }`}
-            >
+            <button key={t.key} onClick={() => setEventFilter(t.key)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${eventFilter === t.key ? 'bg-[var(--color-pirai-500)] text-white' : 'bg-[var(--color-brand-gray)] text-gray-600 hover:bg-gray-200'}`}>
               {t.label} ({t.count})
             </button>
           ))}
         </div>
       )}
 
-      {/* Event cards */}
       {eventos.length === 0 ? (
         <EmptyState label="Sin eventos aún" sub="Registrá eventos de networking para hacer seguimiento." />
       ) : filtered.length === 0 ? (
@@ -534,45 +768,115 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
 
             return (
               <div key={event.id} className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className="font-semibold text-[var(--color-brand-dark)]">{event.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {event.date && (
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {event.date}
-                          {event.end_date && event.end_date !== event.date ? ` → ${event.end_date}` : ''}
-                          {event.time ? ` · ${event.time}` : ''}
-                        </span>
-                      )}
+                {/* Clickable header → detail */}
+                <button className="w-full text-left" onClick={() => setSelectedEvent(event)}>
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="font-semibold text-[var(--color-brand-dark)]">{event.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {event.date && (
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {event.date}
+                            {event.end_date && event.end_date !== event.date ? ` → ${event.end_date}` : ''}
+                            {event.time ? ` · ${event.time}` : ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  {typeLabel && (
-                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${event.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]'}`}>
-                      {typeLabel}
-                    </span>
-                  )}
-                </div>
-                <div className="mb-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-500">
-                      Contactos: {event.contactsMet ?? 0} / {event.contactGoal ?? 0}
-                      {eventContacts.length > 0 && ` · ${eventContacts.length} registrados`}
-                    </span>
-                    {isComplete && (
-                      <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" /> Meta cumplida
+                    {typeLabel && (
+                      <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${event.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]'}`}>
+                        {typeLabel}
                       </span>
                     )}
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-[var(--color-pirai-500)] h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                  <div className="mb-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">
+                        Contactos: {event.contactsMet ?? 0} / {event.contactGoal ?? 0}
+                        {eventContacts.length > 0 && ` · ${eventContacts.length} registrados`}
+                      </span>
+                      {isComplete && (
+                        <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> Meta cumplida
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-[var(--color-pirai-500)] h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                    </div>
                   </div>
+                </button>
+
+                {/* Action bar */}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => { setNewContactEvent(event); setShowNewContact(true); }}
+                      className="text-xs font-semibold text-[var(--color-pirai-600)] hover:text-[var(--color-pirai-700)] flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Conocí a alguien
+                    </button>
+                    <a
+                      href={buildGoogleCalendarUrl(event)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-xs font-semibold text-[var(--color-turquesa-500)] hover:text-[var(--color-turquesa-600)] flex items-center gap-1"
+                    >
+                      <Calendar className="w-3.5 h-3.5" /> Agendar
+                    </a>
+                  </div>
+                  <button
+                    onClick={e => { e.stopPropagation(); setConfirmDelEvento(event); }}
+                    className="text-gray-300 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {confirmDelEvento && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <p className="font-semibold text-[var(--color-brand-dark)] mb-2">¿Eliminar evento?</p>
+            <p className="text-sm text-gray-500 mb-4">Se eliminará <strong>{confirmDelEvento.name}</strong>. Esta acción no se puede deshacer.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelEvento(null)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+              <button onClick={handleDeleteEvento} disabled={deletingEvento} className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50">
+                {deletingEvento ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New contact modal */}
+      {showNewContact && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-[var(--color-brand-dark)]">Conocí a alguien en {newContactEvent?.name}</p>
+              <button onClick={() => setShowNewContact(false)}><X className="w-4 h-4 text-gray-400" /></button>
+            </div>
+            {(['name', 'title', 'email', 'phone', 'linkedin_url'] as const).map(field => (
+              <input key={field} value={newContactForm[field]} onChange={e => setNewContactForm(p => ({ ...p, [field]: e.target.value }))}
+                placeholder={{ name: 'Nombre *', title: 'Cargo', email: 'Email', phone: 'Teléfono', linkedin_url: 'LinkedIn URL' }[field]}
+                className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+              />
+            ))}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowNewContact(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600">Cancelar</button>
+              <button onClick={handleSaveContact} disabled={savingContact || !newContactForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                {savingContact ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
