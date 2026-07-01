@@ -70,6 +70,7 @@ interface SuggestedCompany {
   name: string;
   industry?: string;
   country?: string;
+  website?: string;
   logo_url?: string;
   reason?: string;
 }
