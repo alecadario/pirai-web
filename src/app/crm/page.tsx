@@ -1,7 +1,7 @@
 'use client';
 
 import AppShell from '@/components/layout/AppShell';
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getUserId } from '@/lib/auth';
 import {
@@ -177,7 +177,6 @@ function CRMPageInner() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Empresa | Contacto | null>(null);
-  const detailPanelRef = useRef<HTMLDivElement>(null);
   const [empresaFilter, setEmpresaFilter] = useState<EmpresaFilter>('todas');
   const [eventFilter, setEventFilter] = useState<EventFilter>('todos');
   const [userName, setUserName] = useState('');
@@ -223,8 +222,6 @@ function CRMPageInner() {
   }, [userId, BASE]);
 
   useEffect(() => { load(); }, [load]);
-
-  useEffect(() => { detailPanelRef.current?.scrollTo({ top: 0 }); }, [selected]);
 
   // Auto-select item from URL params after data loads
   useEffect(() => {
@@ -482,9 +479,10 @@ function CRMPageInner() {
         </div>
 
         {/* ── Detail panel ── */}
-        <div ref={detailPanelRef} className="w-[420px] bg-white overflow-auto border-l border-[var(--color-brand-border)]">
+        <div className="w-[420px] bg-white overflow-auto border-l border-[var(--color-brand-border)]">
           {selected ? (
-            tab === 'empresas' ? (
+            <div key={(selected as Empresa | Contacto).id} className="h-full overflow-auto">
+            {tab === 'empresas' ? (
               <EmpresaDetail
                 emp={selected as Empresa}
                 contactos={contactos}
@@ -515,7 +513,8 @@ function CRMPageInner() {
                 }}
                 onDelete={(id) => { setContactos(prev => prev.filter(c => c.id !== id)); setSelected(null); }}
               />
-            ) : null
+            ) : null}
+            </div>
           ) : (
             <div className="flex items-center justify-center h-full text-[var(--color-brand-muted)] text-sm p-8 text-center">
               Seleccioná un elemento para ver sus detalles
