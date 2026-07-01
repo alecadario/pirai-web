@@ -58,8 +58,6 @@ interface Evento {
   details?: string;
   contactGoal?: number;
   contactsMet?: number;
-  location?: string;
-  duration?: number;
 }
 
 interface Actividad {
