@@ -6,7 +6,7 @@ import { getUserId } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { Loader2, Search, ExternalLink, MapPin, Building2, X, CheckCircle2 } from 'lucide-react';
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE ?? '';
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
 
 interface Job {
   id: string;
@@ -126,6 +126,7 @@ export default function EmpleosPage() {
           userId,
           name: job.company,
           status: 'investigando',
+          priority: 'media',
           notes: `${job.title}\n${job.url}`,
           country: job.location,
         }),
