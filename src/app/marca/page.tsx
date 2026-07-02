@@ -5,9 +5,8 @@ import { useState, useEffect } from 'react';
 import { getUserId } from '@/lib/auth';
 import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload } from 'lucide-react';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
 
-type Tab = 'perfil' | 'cv' | 'carta' | 'prep';
+type Tab = 'perfil' | 'cv';
 
 interface ProfileData {
   stage?: string;
@@ -38,8 +37,6 @@ export default function MarcaPage() {
   const TABS = [
     { id: 'perfil' as Tab, label: 'Mi Perfil', icon: User },
     { id: 'cv' as Tab, label: 'CV con IA ✨', icon: FileText },
-    { id: 'carta' as Tab, label: 'Carta de presentación', icon: Sparkles },
-    { id: 'prep' as Tab, label: 'Prep de entrevista', icon: CheckCircle },
   ];
 
   return (
@@ -69,8 +66,6 @@ export default function MarcaPage() {
         <div className="flex-1 p-8 overflow-auto">
           {tab === 'perfil' && <PerfilTab userId={userId} />}
           {tab === 'cv' && <CVGenerator userId={userId} />}
-          {tab === 'carta' && <CartaGenerator userId={userId} />}
-          {tab === 'prep' && <PrepGenerator userId={userId} />}
         </div>
       </div>
     </AppShell>
