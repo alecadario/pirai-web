@@ -5,9 +5,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { clearAuth, getUserName, getUserEmail } from '@/lib/auth';
 import {
   LayoutDashboard, Users, Briefcase, Sparkles, BarChart3,
-  User, LogOut, ChevronRight,
+  User, LogOut, ChevronRight, Zap,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { fetchQuota, PLAN_META } from '@/lib/quota';
+import { getUserId } from '@/lib/auth';
 
 const NAV = [
   { href: '/dashboard', label: 'Tu Día', icon: LayoutDashboard },
@@ -22,10 +24,13 @@ export default function Sidebar() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [plan, setPlan] = useState<string | null>(null);
 
   useEffect(() => {
     setName(getUserName() ?? '');
     setEmail(getUserEmail() ?? '');
+    const uid = getUserId();
+    if (uid) fetchQuota(uid).then(q => q && setPlan(q.plan));
   }, []);
 
   function handleLogout() {
@@ -69,6 +74,29 @@ export default function Sidebar() {
 
       {/* Profile + logout */}
       <div className="px-3 pb-4 border-t border-white/10 pt-3 space-y-1">
+        {/* Plan badge */}
+        <Link
+          href="/plan"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            pathname === '/plan'
+              ? 'bg-[var(--color-pirai-500)] text-white'
+              : 'text-white/60 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          <Zap className="w-4 h-4 shrink-0" />
+          <span className="flex-1">Mi Plan</span>
+          {plan && plan !== 'gratis' && (
+            <span className="text-[10px] font-bold bg-white/20 px-1.5 py-0.5 rounded-full">
+              {PLAN_META[plan]?.emoji} {PLAN_META[plan]?.name}
+            </span>
+          )}
+          {plan === 'gratis' && (
+            <span className="text-[10px] font-bold bg-amber-500/80 text-white px-1.5 py-0.5 rounded-full">
+              Gratis
+            </span>
+          )}
+        </Link>
+
         <Link
           href="/perfil"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
