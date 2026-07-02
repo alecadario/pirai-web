@@ -135,13 +135,23 @@ function PerfilTab({ userId }: { userId: string | null }) {
     setAnalyzing(true);
     setError('');
     try {
-      const res = await fetch(`${BASE}/api/analyze-profile`, {
+      const res = await fetch('/api/analyze-profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({
+          userId,
+          cvText,
+          stage: profileData.stage,
+          age_range: profileData.age_range,
+          passion: profileData.passion,
+          impact: profileData.impact,
+          services_description: profileData.services_description,
+        }),
       });
       const data = await res.json();
-      if (data.analysis) setProfileAnalysis({ ...data.analysis, analyzed_at: new Date().toISOString() });
+      if (data.chances_pct !== undefined) {
+        setProfileAnalysis({ ...data, analyzed_at: new Date().toISOString() });
+      }
     } catch (e) {
       setError('Error al analizar el perfil');
       console.error(e);
