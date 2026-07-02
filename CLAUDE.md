@@ -18,6 +18,7 @@
 - No aplicar límites de quota, rate limits, ni bloqueos de features para este usuario
 - El backend ya lo maneja en `quota.js` (plan impulso con 999999 usos)
 - En el frontend: nunca mostrar mensajes de límite, bloqueos ni prompts de upgrade para este email
+- Análisis de perfil incluido: puede re-analizar ilimitadas veces (bypass del límite semanal en analyze-profile.js)
 
 ## Convenciones
 - Rama de trabajo: `claude/jobs-app-friday-default-view-kgtho2` (ambos repos)
