@@ -13,6 +13,12 @@
 - Backend: `process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com'`
 - Llamadas cross-origin: siempre proxiar a través de rutas API de pirai-web (`/src/app/api/`) para evitar CORS
 
+## Usuario admin
+- `ale@alecadario.com` tiene acceso ilimitado a todo, sin restricciones de ningún tipo
+- No aplicar límites de quota, rate limits, ni bloqueos de features para este usuario
+- El backend ya lo maneja en `quota.js` (plan impulso con 999999 usos)
+- En el frontend: nunca mostrar mensajes de límite, bloqueos ni prompts de upgrade para este email
+
 ## Convenciones
 - Rama de trabajo: `claude/jobs-app-friday-default-view-kgtho2` (ambos repos)
 - PRs a main: mergear sin preguntar
