@@ -71,7 +71,7 @@ export default function PlanPage() {
   const meta = PLAN_META[currentPlan];
   const wu = quota?.weeklyUsage || { msgs: 0, cv: 0, prep: 0 };
   const wl = quota?.weeklyLimits || { msgs: 10, cv: 5, prep: 1 };
-  const isUnlimited = quota?.totalQuota >= 999999;
+  const isUnlimited = (quota?.totalQuota ?? 0) >= 999999;
 
   const rows = [
     { label: 'Búsquedas de contactos', used: quota?.used || 0, limit: isUnlimited ? null : quota?.totalQuota, period: 'este mes' },
