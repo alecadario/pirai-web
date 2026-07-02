@@ -158,7 +158,7 @@ function PerfilTab({ userId }: { userId: string | null }) {
     if (!userId) return;
     setSaving(true);
     try {
-      await fetch(`${BASE}/api/profile`, {
+      await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, ...formData }),
@@ -186,7 +186,7 @@ function PerfilTab({ userId }: { userId: string | null }) {
     setCvUploading(true);
     try {
       const fileBase64 = await toBase64(file);
-      const res = await fetch(`${BASE}/api/upload-cv`, {
+      const res = await fetch('/api/upload-cv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fileBase64 }),
@@ -195,7 +195,7 @@ function PerfilTab({ userId }: { userId: string | null }) {
       if (!res.ok) throw new Error(data.error || 'Error subiendo CV');
       setCvText(data.cvText);
       // Persist to Airtable
-      await fetch(`${BASE}/api/profile`, {
+      await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, cv_text: data.cvText }),
@@ -214,10 +214,10 @@ function PerfilTab({ userId }: { userId: string | null }) {
     setServicesUploading(true);
     try {
       const fileBase64 = await toBase64(file);
-      const res = await fetch(`${BASE}/api/upload-cv`, {
+      const res = await fetch('/api/upload-cv', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileBase64, userId }),
+        body: JSON.stringify({ fileBase64 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error subiendo archivo');
@@ -227,7 +227,7 @@ function PerfilTab({ userId }: { userId: string | null }) {
         : data.cvText;
       setProfileData(p => ({ ...p, services_description: newDesc }));
       // Persist
-      await fetch(`${BASE}/api/profile`, {
+      await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, services_description: newDesc }),
