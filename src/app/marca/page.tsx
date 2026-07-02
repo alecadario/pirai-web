@@ -1,19 +1,42 @@
 'use client';
 
 import AppShell from '@/components/layout/AppShell';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { getUserId } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { Loader2, Sparkles, FileText, Copy, Download, CheckCircle } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User } from 'lucide-react';
 
-type Tab = 'cv' | 'carta' | 'prep';
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
+
+type Tab = 'perfil' | 'cv' | 'carta' | 'prep';
+
+interface ProfileData {
+  stage?: string;
+  fullName?: string;
+  age_range?: string;
+  passion?: string;
+  impact?: string;
+  services_description?: string;
+}
+
+interface ProfileAnalysis {
+  chances_pct: number;
+  chances_explanation?: string;
+  top_strength?: string;
+  biggest_gap?: string;
+  lo_que_sabemos?: string;
+  hard_skills?: string[];
+  soft_skills?: string[];
+  analyzed_at?: string;
+}
 
 export default function MarcaPage() {
-  const [tab, setTab] = useState<Tab>('cv');
+  const [tab, setTab] = useState<Tab>('perfil');
   const userId = getUserId();
 
   const TABS = [
-    { id: 'cv' as Tab, label: 'Generador de CV', icon: FileText },
+    { id: 'perfil' as Tab, label: 'Mi Perfil', icon: User },
+    { id: 'cv' as Tab, label: 'CV con IA ✨', icon: FileText },
     { id: 'carta' as Tab, label: 'Carta de presentación', icon: Sparkles },
     { id: 'prep' as Tab, label: 'Prep de entrevista', icon: CheckCircle },
   ];
@@ -42,7 +65,8 @@ export default function MarcaPage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 overflow-auto">
+          {tab === 'perfil' && <PerfilTab userId={userId} />}
           {tab === 'cv' && <CVGenerator userId={userId} />}
           {tab === 'carta' && <CartaGenerator userId={userId} />}
           {tab === 'prep' && <PrepGenerator userId={userId} />}
@@ -52,8 +76,372 @@ export default function MarcaPage() {
   );
 }
 
+function PerfilTab({ userId }: { userId: string | null }) {
+  const [profileData, setProfileData] = useState<ProfileData>({});
+  const [profileAnalysis, setProfileAnalysis] = useState<ProfileAnalysis | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [formData, setFormData] = useState<ProfileData>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const isBiz = profileData.stage === 'emprendedor' || profileData.stage === 'freelancer' || profileData.stage === 'empresa';
+
+  useEffect(() => {
+    if (!userId) return;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${BASE}/api/bootstrap?userId=${userId}`);
+        const data = await res.json();
+        const answers = data.user?.fields?.onboarding_answers
+          ? JSON.parse(data.user.fields.onboarding_answers)
+          : {};
+        const profile: ProfileData = {
+          stage: answers.stage || data.user?.fields?.stage,
+          fullName: data.user?.fields?.name || data.user?.fields?.fullName,
+          age_range: answers.age_range,
+          passion: data.user?.fields?.passion || answers.passion,
+          impact: data.user?.fields?.impact || answers.impact,
+          services_description: data.user?.fields?.services_description || answers.services_description,
+        };
+        setProfileData(profile);
+
+        // Load existing analysis
+        const analysis = data.user?.fields?.profile_analysis;
+        if (analysis) {
+          try { setProfileAnalysis(JSON.parse(analysis)); } catch {}
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [userId]);
+
+  const canReanalyze = () => {
+    if (!profileAnalysis?.analyzed_at) return true;
+    const days = (Date.now() - new Date(profileAnalysis.analyzed_at).getTime()) / (1000 * 60 * 60 * 24);
+    return days >= 7;
+  };
+
+  const handleAnalyze = async () => {
+    if (!userId) return;
+    setAnalyzing(true);
+    setError('');
+    try {
+      const res = await fetch(`${BASE}/api/analyze-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (data.analysis) setProfileAnalysis({ ...data.analysis, analyzed_at: new Date().toISOString() });
+    } catch (e) {
+      setError('Error al analizar el perfil');
+      console.error(e);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!userId) return;
+    setSaving(true);
+    try {
+      await fetch(`${BASE}/api/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...formData }),
+      });
+      setProfileData(p => ({ ...p, ...formData }));
+      setEditing(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasBasicInfo = !!(profileData.passion && profileData.impact);
+  const hasContext = !!(profileData.services_description);
+  const canAnalyze = hasBasicInfo && hasContext;
+
+  const missing: string[] = [];
+  if (!profileData.passion) missing.push('qué te apasiona');
+  if (!profileData.impact) missing.push('qué impacto querés generar');
+  if (!profileData.services_description) missing.push(isBiz ? 'tus servicios/productos' : 'tu contexto profesional');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-60">
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--color-pirai-500)]" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      {/* Profile Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-[var(--color-brand-border)] overflow-hidden">
+        <div className="h-20 bg-gradient-to-r from-[var(--color-pirai-500)] to-[var(--color-pirai-600)]" />
+        <div className="px-5 pb-5 -mt-10">
+          <div className="flex items-end gap-4">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md bg-gray-100 flex items-center justify-center">
+                <User className="w-8 h-8 text-gray-300" />
+              </div>
+              <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                isBiz ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-teal-100 text-teal-700 border border-teal-200'
+              }`}>
+                {profileData.stage === 'emprendedor' ? 'Emprendedor/a' : profileData.stage === 'freelancer' ? 'Freelancer' : 'Buscando trabajo'}
+              </span>
+            </div>
+            <div className="flex-1 pb-1">
+              <p className="font-bold text-[var(--color-brand-dark)] text-lg leading-tight">{profileData.fullName || 'Tu nombre'}</p>
+              {profileData.age_range && <p className="text-xs text-gray-500">{profileData.age_range} años</p>}
+            </div>
+            <button
+              onClick={() => { setEditing(true); setFormData({ ...profileData }); }}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] px-3 py-2 rounded-lg hover:bg-[var(--color-pirai-100)] mb-1"
+            >
+              <Pencil className="w-3.5 h-3.5" /> Editar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Lo que sabemos */}
+      {profileAnalysis?.lo_que_sabemos && (
+        <div className="bg-gradient-to-r from-[var(--color-pirai-50)] to-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-4">
+          <p className="text-xs font-semibold text-[var(--color-pirai-600)] uppercase tracking-wider mb-2">Lo que sabemos de vos</p>
+          <p className="text-sm text-[var(--color-pirai-800)] leading-relaxed">{profileAnalysis.lo_que_sabemos}</p>
+        </div>
+      )}
+
+      {/* Chances Score */}
+      {profileAnalysis ? (
+        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">
+              Tus chances de {isBiz ? 'conseguir clientes' : 'conseguir empleo'}
+            </p>
+            <span className={`text-xl font-bold ${
+              profileAnalysis.chances_pct >= 70 ? 'text-[var(--color-pirai-600)]' : profileAnalysis.chances_pct >= 40 ? 'text-amber-600' : 'text-red-500'
+            }`}>
+              {profileAnalysis.chances_pct}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className={`h-3 rounded-full transition-all ${
+                profileAnalysis.chances_pct >= 70 ? 'bg-[var(--color-pirai-500)]' : profileAnalysis.chances_pct >= 40 ? 'bg-amber-500' : 'bg-red-400'
+              }`}
+              style={{ width: `${profileAnalysis.chances_pct}%` }}
+            />
+          </div>
+          {profileAnalysis.chances_explanation && (
+            <p className="text-xs text-gray-500">{profileAnalysis.chances_explanation}</p>
+          )}
+
+          <div className="flex gap-3">
+            {profileAnalysis.top_strength && (
+              <div className="flex-1 bg-[var(--color-pirai-50)] rounded-xl p-3">
+                <p className="text-[10px] font-semibold text-[var(--color-pirai-600)] uppercase mb-1">Tu fortaleza</p>
+                <p className="text-xs text-[var(--color-pirai-800)]">{profileAnalysis.top_strength}</p>
+              </div>
+            )}
+            {profileAnalysis.biggest_gap && (
+              <div className="flex-1 bg-amber-50 rounded-xl p-3">
+                <p className="text-[10px] font-semibold text-amber-600 uppercase mb-1">Oportunidad de mejora</p>
+                <p className="text-xs text-amber-800">{profileAnalysis.biggest_gap}</p>
+              </div>
+            )}
+          </div>
+
+          {(profileAnalysis.hard_skills?.length || profileAnalysis.soft_skills?.length) ? (
+            <div className="flex gap-3">
+              {profileAnalysis.hard_skills && profileAnalysis.hard_skills.length > 0 && (
+                <div className="flex-1 bg-gray-50 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Hard skills</p>
+                  <div className="flex flex-wrap gap-1">
+                    {profileAnalysis.hard_skills.map((s, i) => (
+                      <span key={i} className="text-[10px] bg-[var(--color-pirai-100)] text-[var(--color-pirai-700)] px-2 py-0.5 rounded-full">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {profileAnalysis.soft_skills && profileAnalysis.soft_skills.length > 0 && (
+                <div className="flex-1 bg-gray-50 rounded-xl p-3">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Soft skills</p>
+                  <div className="flex flex-wrap gap-1">
+                    {profileAnalysis.soft_skills.map((s, i) => (
+                      <span key={i} className="text-[10px] bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {/* Re-analyze */}
+          <button
+            onClick={handleAnalyze}
+            disabled={analyzing || !canReanalyze()}
+            className={`w-full text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 transition-colors ${
+              canReanalyze() ? 'text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)]' : 'text-gray-400 bg-gray-100'
+            }`}
+          >
+            {analyzing ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Re-analizando...</> : <><RefreshCw className="w-3.5 h-3.5" /> Re-analizar perfil</>}
+          </button>
+          {!canReanalyze() && (
+            <p className="text-[10px] text-gray-400 text-center">El análisis se puede regenerar 1 vez por semana</p>
+          )}
+        </div>
+      ) : canAnalyze ? (
+        <button
+          onClick={handleAnalyze}
+          disabled={analyzing}
+          className="w-full bg-gradient-to-r from-[var(--color-pirai-600)] to-[var(--color-pirai-600)] text-white px-4 py-3.5 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 shadow-sm"
+        >
+          {analyzing ? <><Loader2 className="w-4 h-4 animate-spin" /> Analizando tu perfil...</> : <><Sparkles className="w-4 h-4" /> Analizar mi perfil</>}
+        </button>
+      ) : (
+        <div className="bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-5">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-[var(--color-pirai-100)] rounded-xl flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-[var(--color-pirai-500)]" />
+            </div>
+            <div>
+              <p className="font-semibold text-[var(--color-pirai-900)] text-sm mb-1">Completá tu perfil para desbloquear el análisis</p>
+              <p className="text-xs text-[var(--color-pirai-700)] leading-relaxed mb-3">
+                Para que la IA pueda darte un análisis útil y personalizado, necesitamos saber un poco más de vos.
+              </p>
+              <div className="space-y-1.5 mb-3">
+                {missing.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full border-2 border-[var(--color-pirai-300)] shrink-0" />
+                    <span className="text-xs text-[var(--color-pirai-600)]">Falta: {item}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => { setEditing(true); setFormData({ ...profileData }); }}
+                className="text-xs font-semibold text-[var(--color-pirai-700)] bg-[var(--color-pirai-100)] px-3 py-2 rounded-lg hover:bg-[var(--color-pirai-200)] transition-colors inline-flex items-center gap-1"
+              >
+                <Pencil className="w-3 h-3" /> Completar ahora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {/* Context / Services */}
+      <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-[var(--color-brand-dark)] text-sm">
+            {isBiz ? 'Tus servicios / productos' : 'Tu contexto profesional'}
+          </h3>
+          <button
+            onClick={() => { setEditing(true); setFormData({ ...profileData }); }}
+            className="text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-pirai-100)]"
+          >
+            <Pencil className="w-3 h-3 inline mr-1" />{profileData.services_description ? 'Editar' : 'Agregar'}
+          </button>
+        </div>
+        {profileData.services_description ? (
+          <div className="bg-[var(--color-pirai-50)] rounded-xl p-3">
+            <p className="text-sm text-[var(--color-pirai-800)] leading-relaxed">{profileData.services_description}</p>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+            <p className="text-xs text-amber-700">
+              {isBiz
+                ? '📋 Escribí tus servicios/productos. Esto le da contexto a la IA para ayudarte mejor.'
+                : '📋 Escribí tu info profesional. Así la IA entiende tu situación y te da mejores recomendaciones.'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Edit Profile Panel */}
+      {editing && (
+        <div className="bg-white rounded-2xl p-5 border-2 border-[var(--color-pirai-200)] shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-[var(--color-brand-dark)]">Editar perfil</h3>
+            <div className="flex gap-2">
+              <button onClick={handleSave} disabled={saving} className="text-xs font-semibold text-white bg-[var(--color-pirai-600)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-pirai-700)] disabled:opacity-50">
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+              <button onClick={() => setEditing(false)} className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200">
+                Cancelar
+              </button>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Etapa</label>
+              <select
+                value={formData.stage || ''}
+                onChange={e => setFormData(p => ({ ...p, stage: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[var(--color-pirai-500)] outline-none"
+              >
+                <option value="job_seeker">Buscando empleo</option>
+                <option value="emprendedor">Emprendedor/a</option>
+                <option value="freelancer">Freelancer</option>
+                <option value="transicion">En transición</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">¿Qué te apasiona?</label>
+              <textarea
+                value={formData.passion || ''}
+                onChange={e => setFormData(p => ({ ...p, passion: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[var(--color-pirai-500)] outline-none resize-none"
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">¿Qué impacto querés generar?</label>
+              <textarea
+                value={formData.impact || ''}
+                onChange={e => setFormData(p => ({ ...p, impact: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[var(--color-pirai-500)] outline-none resize-none"
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">
+                {formData.stage === 'emprendedor' || formData.stage === 'freelancer'
+                  ? '¿Qué servicios o productos ofrecés?'
+                  : '¿A qué te dedicás? Contanos más de tu perfil profesional'}
+              </label>
+              <textarea
+                value={formData.services_description || ''}
+                onChange={e => setFormData(p => ({ ...p, services_description: e.target.value }))}
+                placeholder={
+                  formData.stage === 'emprendedor' || formData.stage === 'freelancer'
+                    ? 'Ej: Diseño web para pymes, consultoría en marketing digital...'
+                    : 'Ej: Soy analista de datos con 3 años de experiencia en retail...'
+                }
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[var(--color-pirai-500)] outline-none resize-none"
+                rows={4}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CVGenerator({ userId }: { userId: string | null }) {
-  const [form, setForm] = useState({ rol: '', empresa: '', idioma: 'es', genero: 'femenino' });
+  const [form, setForm] = useState({ rol: '', empresa: '', idioma: 'es', genero: 'femenino', jobDescription: '', contexto: '' });
   const [result, setResult] = useState<{ cv?: Record<string, unknown>; letter?: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,7 +473,7 @@ function CVGenerator({ userId }: { userId: string | null }) {
   };
 
   return (
-    <div className="max-w-3xl mx-auto grid grid-cols-2 gap-8">
+    <div className="max-w-4xl mx-auto grid grid-cols-2 gap-8">
       {/* Form */}
       <div className="space-y-5">
         <div>
@@ -134,6 +522,28 @@ function CVGenerator({ userId }: { userId: string | null }) {
           </div>
         </div>
 
+        <div>
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Descripción del puesto (opcional)</label>
+          <textarea
+            rows={3}
+            value={form.jobDescription}
+            onChange={e => setForm(p => ({ ...p, jobDescription: e.target.value }))}
+            placeholder="Pegá acá la descripción del puesto para que el CV use sus palabras clave..."
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Algo que quieras destacar (opcional)</label>
+          <textarea
+            rows={2}
+            value={form.contexto}
+            onChange={e => setForm(p => ({ ...p, contexto: e.target.value }))}
+            placeholder="Logros recientes, proyectos, habilidades específicas..."
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
+          />
+        </div>
+
         {error && <p className="text-sm text-red-500">{error}</p>}
 
         <button
@@ -152,12 +562,10 @@ function CVGenerator({ userId }: { userId: string | null }) {
           <>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-sm text-[var(--color-brand-dark)]">Tu CV generado</h3>
-              <div className="flex gap-2">
-                <button onClick={copyText} className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] px-2 py-1 rounded-lg transition-colors">
-                  {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copied ? 'Copiado' : 'Copiar'}
-                </button>
-              </div>
+              <button onClick={copyText} className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] px-2 py-1 rounded-lg transition-colors">
+                {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copiado' : 'Copiar'}
+              </button>
             </div>
             <div className="flex-1 overflow-auto text-sm text-[var(--color-brand-dark)] whitespace-pre-line leading-relaxed">
               {result.letter ?? JSON.stringify(result.cv, null, 2)}
@@ -197,7 +605,7 @@ function CartaGenerator({ userId }: { userId: string | null }) {
   }, [userId, form]);
 
   return (
-    <div className="max-w-3xl mx-auto grid grid-cols-2 gap-8">
+    <div className="max-w-4xl mx-auto grid grid-cols-2 gap-8">
       <div className="space-y-5">
         <div>
           <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-1">Carta de presentación</h2>
@@ -275,7 +683,7 @@ function PrepGenerator({ userId }: { userId: string | null }) {
   }, [userId, empresa, rol]);
 
   return (
-    <div className="max-w-3xl mx-auto grid grid-cols-2 gap-8">
+    <div className="max-w-4xl mx-auto grid grid-cols-2 gap-8">
       <div className="space-y-5">
         <div>
           <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-1">Preparación de entrevista</h2>
