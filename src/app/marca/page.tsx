@@ -4,7 +4,7 @@ import AppShell from '@/components/layout/AppShell';
 import { useState, useCallback, useEffect } from 'react';
 import { getUserId } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload } from 'lucide-react';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
 
@@ -79,6 +79,9 @@ export default function MarcaPage() {
 function PerfilTab({ userId }: { userId: string | null }) {
   const [profileData, setProfileData] = useState<ProfileData>({});
   const [profileAnalysis, setProfileAnalysis] = useState<ProfileAnalysis | null>(null);
+  const [cvText, setCvText] = useState('');
+  const [cvUploading, setCvUploading] = useState(false);
+  const [servicesUploading, setServicesUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -107,6 +110,9 @@ function PerfilTab({ userId }: { userId: string | null }) {
           services_description: data.user?.fields?.services_description || answers.services_description,
         };
         setProfileData(profile);
+
+        // Load CV text
+        if (data.user?.fields?.cv_text) setCvText(data.user.fields.cv_text);
 
         // Load existing analysis
         const analysis = data.user?.fields?.profile_analysis;
@@ -166,14 +172,76 @@ function PerfilTab({ userId }: { userId: string | null }) {
     }
   };
 
+  const toBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const handleUploadCV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setCvUploading(true);
+    try {
+      const fileBase64 = await toBase64(file);
+      const res = await fetch(`${BASE}/api/upload-cv`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileBase64, userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error subiendo CV');
+      setCvText(data.cvText);
+    } catch (err) {
+      alert('Error subiendo CV: ' + (err instanceof Error ? err.message : 'Error'));
+    } finally {
+      setCvUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleUploadServices = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    setServicesUploading(true);
+    try {
+      const fileBase64 = await toBase64(file);
+      const res = await fetch(`${BASE}/api/upload-cv`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileBase64, userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error subiendo archivo');
+      const prev = profileData.services_description || '';
+      const newDesc = prev
+        ? `${prev}\n\n--- Extraído del archivo ---\n${data.cvText}`
+        : data.cvText;
+      setProfileData(p => ({ ...p, services_description: newDesc }));
+      // Persist
+      await fetch(`${BASE}/api/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, services_description: newDesc }),
+      });
+    } catch (err) {
+      alert('Error subiendo archivo: ' + (err instanceof Error ? err.message : 'Error'));
+    } finally {
+      setServicesUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const hasBasicInfo = !!(profileData.passion && profileData.impact);
-  const hasContext = !!(profileData.services_description);
+  const hasContext = !!(profileData.services_description || cvText);
   const canAnalyze = hasBasicInfo && hasContext;
 
   const missing: string[] = [];
   if (!profileData.passion) missing.push('qué te apasiona');
   if (!profileData.impact) missing.push('qué impacto querés generar');
-  if (!profileData.services_description) missing.push(isBiz ? 'tus servicios/productos' : 'tu contexto profesional');
+  if (!profileData.services_description && !cvText) missing.push(isBiz ? 'tus servicios/productos o tu CV' : 'tu contexto profesional o tu CV');
 
   if (loading) {
     return (
@@ -341,18 +409,50 @@ function PerfilTab({ userId }: { userId: string | null }) {
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
+      {/* Documentos / CV */}
+      <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-[var(--color-brand-dark)] text-sm">Documentos</h3>
+          <label className={`cursor-pointer text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${cvUploading ? 'bg-gray-100 text-gray-400' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)]'}`}>
+            {cvUploading
+              ? <><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Subiendo...</>
+              : <><Upload className="w-3 h-3 inline mr-1" />{cvText ? 'Actualizar CV' : 'Subir CV'}</>}
+            <input type="file" accept=".pdf" onChange={handleUploadCV} className="hidden" disabled={cvUploading} />
+          </label>
+        </div>
+        {cvText ? (
+          <div className="flex items-center gap-3 bg-[var(--color-pirai-50)] rounded-xl p-3">
+            <CheckCircle className="w-5 h-5 text-[var(--color-pirai-500)] shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-[var(--color-pirai-700)]">CV cargado</p>
+              <p className="text-xs text-[var(--color-pirai-600)]">{cvText.length} caracteres extraídos</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gray-50 rounded-xl p-3 text-center">
+            <p className="text-xs text-gray-400">Subí tu CV en PDF para un análisis más preciso.</p>
+          </div>
+        )}
+      </div>
+
       {/* Context / Services */}
       <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-[var(--color-brand-dark)] text-sm">
             {isBiz ? 'Tus servicios / productos' : 'Tu contexto profesional'}
           </h3>
-          <button
-            onClick={() => { setEditing(true); setFormData({ ...profileData }); }}
-            className="text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-pirai-100)]"
-          >
-            <Pencil className="w-3 h-3 inline mr-1" />{profileData.services_description ? 'Editar' : 'Agregar'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setEditing(true); setFormData({ ...profileData }); }}
+              className="text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] px-2.5 py-1.5 rounded-lg hover:bg-[var(--color-pirai-100)]"
+            >
+              <Pencil className="w-3 h-3 inline mr-1" />{profileData.services_description ? 'Editar' : 'Agregar'}
+            </button>
+            <label className={`cursor-pointer text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors ${servicesUploading ? 'bg-gray-100 text-gray-400' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)]'}`}>
+              {servicesUploading ? <><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Subiendo...</> : <><Upload className="w-3 h-3 inline mr-1" />Subir PDF</>}
+              <input type="file" accept=".pdf" onChange={handleUploadServices} className="hidden" disabled={servicesUploading} />
+            </label>
+          </div>
         </div>
         {profileData.services_description ? (
           <div className="bg-[var(--color-pirai-50)] rounded-xl p-3">
