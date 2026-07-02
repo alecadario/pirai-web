@@ -1,0 +1,11 @@
+[[redirects]]
+  from = "http://pirai.es/*"
+  to = "https://pirai.es/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.pirai.es/*"
+  to = "https://pirai.es/:splat"
+  status = 301
+  force = true
