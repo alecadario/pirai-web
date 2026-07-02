@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const proto = req.headers.get('x-forwarded-proto');
   if (proto && proto !== 'https') {
     const url = req.nextUrl.clone();
