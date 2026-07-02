@@ -381,7 +381,7 @@ function PerfilTab({ userId }: { userId: string | null }) {
           {/* Stats — Tu perfil en números */}
           {profileAnalysis.stats && profileAnalysis.stats.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Tu perfil en números</p>
+              <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Tus puntos clave</p>
               <div className="grid grid-cols-2 gap-2">
                 {profileAnalysis.stats.map((s, i) => (
                   <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2.5">
