@@ -1,9 +1,8 @@
 'use client';
 
 import AppShell from '@/components/layout/AppShell';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { getUserId } from '@/lib/auth';
-import { api } from '@/lib/api';
 import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload } from 'lucide-react';
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
@@ -596,65 +595,254 @@ function PerfilTab({ userId }: { userId: string | null }) {
   );
 }
 
+function CVContent({ cv, rName, rEmail, rLinkedin, idioma, improving, onImprove }: {
+  cv: Record<string, unknown>; rName: string; rEmail: string; rLinkedin: string;
+  idioma: string; improving: string | null; onImprove: (section: string, index: number | null) => void;
+}) {
+  return (
+    <div className="space-y-5 text-sm">
+      {(rName || rEmail) ? (
+        <div className="pb-3 border-b border-gray-100">
+          {rName ? <p className="font-bold text-[var(--color-brand-dark)] text-base">{rName}</p> : null}
+          {rEmail ? <p className="text-xs text-gray-500">{rEmail}{rLinkedin ? ' · ' + rLinkedin : ''}</p> : null}
+        </div>
+      ) : null}
+
+      {cv.resumen ? (
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[10px] font-bold text-[var(--color-pirai-600)] uppercase tracking-wider">{LANG_LABELS.resumen[idioma]}</p>
+            <button onClick={() => onImprove('resumen', null)} disabled={improving === 'resumen'}
+              className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)] disabled:opacity-50 transition-colors">
+              {improving === 'resumen' ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Sparkles className="w-2.5 h-2.5" />} Mejorar
+            </button>
+          </div>
+          <p className="text-gray-700 leading-relaxed">{String(cv.resumen)}</p>
+        </div>
+      ) : null}
+
+      {(cv.experiencia as unknown[])?.length > 0 ? (
+        <div>
+          <p className="text-[10px] font-bold text-[var(--color-pirai-600)] uppercase tracking-wider mb-2">{LANG_LABELS.experiencia[idioma]}</p>
+          <div className="space-y-3">
+            {(cv.experiencia as Record<string,unknown>[]).map((exp, i) => (
+              <div key={i}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-[var(--color-brand-dark)]">{String(exp.cargo)}</p>
+                    <p className="text-[11px] text-[var(--color-pirai-600)]">{[exp.empresa, exp.periodo, exp.ubicacion].filter(Boolean).join(' · ')}</p>
+                  </div>
+                  <button onClick={() => onImprove('experiencia', i)} disabled={improving === `exp-${i}`}
+                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)] disabled:opacity-50 shrink-0 transition-colors">
+                    {improving === `exp-${i}` ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Sparkles className="w-2.5 h-2.5" />} Mejorar
+                  </button>
+                </div>
+                <ul className="mt-1.5 space-y-1 pl-2">
+                  {((exp.logros as string[]) || []).map((l, j) => (
+                    <li key={j} className="flex items-start gap-1.5 text-xs text-gray-600">
+                      <span className="text-[var(--color-pirai-400)] shrink-0">•</span>{l}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {(cv.logros_clave as unknown[])?.length > 0 ? (
+        <div>
+          <p className="text-[10px] font-bold text-[var(--color-pirai-600)] uppercase tracking-wider mb-1.5">{LANG_LABELS.logros[idioma]}</p>
+          <ul className="space-y-1 pl-2">
+            {(cv.logros_clave as string[]).map((l, i) => <li key={i} className="text-xs text-gray-600">• {l}</li>)}
+          </ul>
+        </div>
+      ) : null}
+
+      {(cv.educacion as unknown[])?.length > 0 ? (
+        <div>
+          <p className="text-[10px] font-bold text-[var(--color-pirai-600)] uppercase tracking-wider mb-1.5">{LANG_LABELS.educacion[idioma]}</p>
+          <div className="space-y-1.5">
+            {(cv.educacion as Record<string,unknown>[]).map((e, i) => (
+              <div key={i}>
+                <p className="font-semibold text-[var(--color-brand-dark)] text-xs">{String(e.titulo)}</p>
+                <p className="text-[11px] text-[var(--color-pirai-600)]">{[e.institucion, e.anio].filter(Boolean).join(' · ')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {((cv.habilidades as unknown[])?.length || (cv.herramientas as unknown[])?.length || (cv.idiomas as unknown[])?.length) ? (
+        <div>
+          <p className="text-[10px] font-bold text-[var(--color-pirai-600)] uppercase tracking-wider mb-1.5">{LANG_LABELS.habilidades[idioma]}</p>
+          {(cv.habilidades as string[])?.length > 0 ? <p className="text-xs text-gray-600">{(cv.habilidades as string[]).join(' · ')}</p> : null}
+          {(cv.herramientas as string[])?.length > 0 ? <p className="text-[11px] text-gray-500 mt-0.5">{(cv.herramientas as string[]).join(' · ')}</p> : null}
+          {(cv.idiomas as string[])?.length > 0 ? <p className="text-[11px] text-gray-500 mt-0.5">{(cv.idiomas as string[]).join(' · ')}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const CV_COLORS = [
+  { key: 'esmeralda', color: '#00A86B', label: 'Verde Esmeralda' },
+  { key: 'turquesa',  color: '#1BCDD1', label: 'Turquesa'        },
+  { key: 'oscuro',    color: '#2D3748', label: 'Azul Oscuro'     },
+  { key: 'blanco',    color: '#F2F4F7', label: 'Gris Claro'      },
+];
+
+const LANG_LABELS: Record<string, Record<string, string>> = {
+  resumen: { es: 'Perfil Profesional', en: 'Professional Profile', pt: 'Perfil Profissional' },
+  experiencia: { es: 'Experiencia', en: 'Experience', pt: 'Experiência' },
+  educacion: { es: 'Educación', en: 'Education', pt: 'Educação' },
+  habilidades: { es: 'Habilidades & Herramientas', en: 'Skills & Tools', pt: 'Habilidades & Ferramentas' },
+  logros: { es: 'Logros Clave', en: 'Key Achievements', pt: 'Conquistas-Chave' },
+};
+
 function CVGenerator({ userId }: { userId: string | null }) {
-  const [form, setForm] = useState({ rol: '', empresa: '', idioma: 'es', genero: 'femenino', jobDescription: '', contexto: '' });
-  const [result, setResult] = useState<{ cv?: Record<string, unknown>; letter?: string } | null>(null);
+  const [form, setForm] = useState({
+    rol: '', empresa: '', idioma: 'es', genero: 'femenino',
+    jobDescription: '', contexto: '', wantsCoverLetter: false,
+    isGeneric: true, colorTheme: 'esmeralda',
+  });
+  type CvResult = {
+    cv?: Record<string, unknown>;
+    coverLetter?: string;
+    userName?: string | null;
+    userEmail?: string | null;
+    userLinkedin?: string | null;
+    portafolio?: Record<string, unknown>;
+  };
+  const [result, setResult] = useState<CvResult | null>(null);
+  const [resultTab, setResultTab] = useState<'cv' | 'cover'>('cv');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [improving, setImproving] = useState<string | null>(null);
 
-  const generate = useCallback(async () => {
+  const generate = async () => {
     if (!userId || !form.rol) return;
     setLoading(true);
     setError('');
     setResult(null);
     try {
-      const res = await api.post<{ cv: Record<string, unknown>; letter: string }>('/api/cv/generate', {
-        userId,
-        ...form,
+      const res = await fetch('/api/generate-cv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...form, senderName: '' }),
       });
-      setResult(res);
+      const data = await res.json();
+      if (res.status === 429 || data.error === 'limit_reached') {
+        setError('Llegaste al límite de generaciones de CV de tu plan esta semana.');
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'Error generando CV');
+      setResult(data);
+      setResultTab('cv');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error generando el CV');
     } finally {
       setLoading(false);
     }
-  }, [userId, form]);
-
-  const copyText = () => {
-    const text = result?.letter ?? JSON.stringify(result?.cv, null, 2);
-    navigator.clipboard.writeText(text ?? '');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
+  const improveSection = async (section: string, index: number | null) => {
+    if (!result?.cv) return;
+    const cv = result.cv as Record<string, unknown>;
+    const key = index !== null ? `exp-${index}` : section;
+    setImproving(key);
+    try {
+      const body: Record<string, unknown> = { section, rol: form.rol, rolEmpresa: form.empresa, jobDescription: form.jobDescription, idioma: form.idioma, genero: form.genero };
+      if (section === 'resumen') body.resumen = cv.resumen;
+      if (section === 'experiencia' && index !== null) {
+        const exp = (cv.experiencia as Record<string, unknown>[])[index];
+        body.cargo = exp.cargo; body.empresa = exp.empresa; body.logros = exp.logros;
+      }
+      const res = await fetch('/api/improve-cv-section', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (section === 'resumen' && data.resumen) {
+        setResult(p => p ? { ...p, cv: { ...p.cv, resumen: data.resumen } } : p);
+      } else if (section === 'experiencia' && index !== null && data.logros) {
+        setResult(p => {
+          if (!p?.cv) return p;
+          const newExp = [...(p.cv.experiencia as Record<string, unknown>[])];
+          newExp[index] = { ...newExp[index], logros: data.logros };
+          return { ...p, cv: { ...p.cv, experiencia: newExp } };
+        });
+      }
+    } catch {}
+    setImproving(null);
+  };
+
+  const downloadPDF = async () => {
+    if (!result?.cv) return;
+    const { jsPDF } = await import('jspdf');
+    const cv = result.cv as Record<string, unknown>;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const accent = CV_COLORS.find(c => c.key === form.colorTheme)?.color || '#00A86B';
+    const [r, g, b] = [parseInt(accent.slice(1,3),16), parseInt(accent.slice(3,5),16), parseInt(accent.slice(5,7),16)];
+    let y = 20;
+    const addText = (text: string, size: number, bold = false, color: [number,number,number] = [30,30,30]) => {
+      doc.setFontSize(size); doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setTextColor(...color);
+      const lines = doc.splitTextToSize(String(text), 175);
+      doc.text(lines, 15, y); y += lines.length * (size * 0.45) + 2;
+    };
+    if (rName) addText(rName, 18, true, [r,g,b]);
+    if (rEmail || rLinkedin) addText([rEmail, rLinkedin].filter(Boolean).join(' · '), 9, false, [100,100,100]);
+    y += 3;
+    if (cv.resumen) { addText(LANG_LABELS.resumen[form.idioma] || 'Perfil', 11, true, [r,g,b]); addText(String(cv.resumen), 9); y += 2; }
+    if ((cv.experiencia as unknown[])?.length) {
+      addText(LANG_LABELS.experiencia[form.idioma] || 'Experiencia', 11, true, [r,g,b]);
+      for (const exp of cv.experiencia as Record<string,unknown>[]) {
+        addText(`${exp.cargo} — ${exp.empresa}${exp.periodo ? ' · ' + exp.periodo : ''}`, 9, true);
+        for (const l of (exp.logros as string[]) || []) addText(`• ${l}`, 8);
+        y += 1;
+      }
+    }
+    if ((cv.educacion as unknown[])?.length) {
+      addText(LANG_LABELS.educacion[form.idioma] || 'Educación', 11, true, [r,g,b]);
+      for (const e of cv.educacion as Record<string,unknown>[]) addText(`${e.titulo} — ${e.institucion}${e.anio ? ' · ' + e.anio : ''}`, 9);
+      y += 1;
+    }
+    const habs = [...((cv.habilidades as string[]) || []), ...((cv.herramientas as string[]) || []), ...((cv.idiomas as string[]) || [])];
+    if (habs.length) { addText(LANG_LABELS.habilidades[form.idioma] || 'Habilidades', 11, true, [r,g,b]); addText(habs.join(' · '), 9); }
+    doc.save(`CV_${(rName || 'CV').replace(/\s/g,'_')}.pdf`);
+  };
+
+  const getCopyText = () => {
+    if (resultTab === 'cover') return result?.coverLetter || '';
+    const cv = result?.cv as Record<string, unknown> | undefined;
+    if (!cv) return '';
+    return [cv.resumen, ...((cv.experiencia as Record<string,unknown>[]) || []).map(e => `${e.cargo} — ${e.empresa}\n${((e.logros as string[]) || []).join('\n')}`)].join('\n\n');
+  };
+
+  const cv = result?.cv as Record<string, unknown> | undefined;
+  const rName = String(result?.userName || '');
+  const rEmail = String(result?.userEmail || '');
+  const rLinkedin = String(result?.userLinkedin || '');
+
   return (
-    <div className="max-w-4xl mx-auto grid grid-cols-2 gap-8">
+    <div className="max-w-5xl mx-auto grid grid-cols-[400px_1fr] gap-8">
       {/* Form */}
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-1">Generador de CV con IA</h2>
+          <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-0.5">Generador de CV con IA</h2>
           <p className="text-sm text-[var(--color-brand-muted)]">Adaptado al rol, en tu idioma, listo para enviar.</p>
         </div>
 
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Rol al que te postulás *</label>
-          <input
-            value={form.rol}
-            onChange={e => setForm(p => ({ ...p, rol: e.target.value }))}
+          <input value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))}
             placeholder="ej. Product Manager en startup tech"
-            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
-          />
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
         </div>
 
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Empresa (opcional)</label>
-          <input
-            value={form.empresa}
-            onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))}
+          <input value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))}
             placeholder="ej. Mercado Libre"
-            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
-          />
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -662,75 +850,111 @@ function CVGenerator({ userId }: { userId: string | null }) {
             <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Idioma</label>
             <select value={form.idioma} onChange={e => setForm(p => ({ ...p, idioma: e.target.value }))}
               className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
-              <option value="es">Español</option>
-              <option value="en">Inglés</option>
-              <option value="pt">Portugués</option>
+              <option value="es">Español</option><option value="en">Inglés</option><option value="pt">Portugués</option>
             </select>
           </div>
           <div>
             <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Género</label>
             <select value={form.genero} onChange={e => setForm(p => ({ ...p, genero: e.target.value }))}
               className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
-              <option value="femenino">Femenino</option>
-              <option value="masculino">Masculino</option>
-              <option value="no_binario">No binario</option>
+              <option value="femenino">Femenino</option><option value="masculino">Masculino</option><option value="no_binario">No binario</option>
             </select>
           </div>
         </div>
 
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Descripción del puesto (opcional)</label>
-          <textarea
-            rows={3}
-            value={form.jobDescription}
-            onChange={e => setForm(p => ({ ...p, jobDescription: e.target.value }))}
-            placeholder="Pegá acá la descripción del puesto para que el CV use sus palabras clave..."
-            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
-          />
+          <textarea rows={3} value={form.jobDescription} onChange={e => setForm(p => ({ ...p, jobDescription: e.target.value }))}
+            placeholder="Pegá acá la descripción del puesto para usar sus palabras clave..."
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
         </div>
 
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Algo que quieras destacar (opcional)</label>
-          <textarea
-            rows={2}
-            value={form.contexto}
-            onChange={e => setForm(p => ({ ...p, contexto: e.target.value }))}
+          <textarea rows={2} value={form.contexto} onChange={e => setForm(p => ({ ...p, contexto: e.target.value }))}
             placeholder="Logros recientes, proyectos, habilidades específicas..."
-            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
-          />
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.wantsCoverLetter}
+              onChange={e => setForm(p => ({ ...p, wantsCoverLetter: e.target.checked }))}
+              className="rounded accent-[var(--color-pirai-600)]" />
+            <span className="text-sm font-medium text-gray-700">Generar cover letter también</span>
+          </label>
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-2">Color del PDF</label>
+          <div className="flex gap-2">
+            {CV_COLORS.map(t => (
+              <button key={t.key} title={t.label} onClick={() => setForm(p => ({ ...p, colorTheme: t.key }))}
+                style={{ backgroundColor: t.color }}
+                className={`w-8 h-8 rounded-full border-2 transition-all ${form.colorTheme === t.key ? 'border-[var(--color-pirai-600)] scale-110 shadow-md' : 'border-gray-200'}`} />
+            ))}
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <button
-          onClick={generate}
-          disabled={loading || !form.rol}
-          className="w-full flex items-center justify-center gap-2 bg-[var(--color-pirai-500)] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors"
-        >
+        <button onClick={generate} disabled={loading || !form.rol}
+          className="w-full flex items-center justify-center gap-2 bg-[var(--color-pirai-500)] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {loading ? 'Generando...' : 'Generar CV con IA'}
         </button>
       </div>
 
-      {/* Result */}
-      <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5 min-h-[400px] flex flex-col">
+      {/* Result panel */}
+      <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] flex flex-col min-h-[500px] overflow-hidden">
         {result ? (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm text-[var(--color-brand-dark)]">Tu CV generado</h3>
-              <button onClick={copyText} className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] px-2 py-1 rounded-lg transition-colors">
-                {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? 'Copiado' : 'Copiar'}
-              </button>
+            {/* Tabs */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-0 border-b border-[var(--color-brand-border)]">
+              <div className="flex gap-1">
+                <button onClick={() => setResultTab('cv')}
+                  className={`text-xs font-semibold px-4 py-2 rounded-t-lg border-b-2 transition-colors ${resultTab === 'cv' ? 'text-[var(--color-pirai-600)] border-[var(--color-pirai-500)] bg-[var(--color-pirai-50)]' : 'text-gray-400 border-transparent'}`}>
+                  CV
+                </button>
+                {result.coverLetter && (
+                  <button onClick={() => setResultTab('cover')}
+                    className={`text-xs font-semibold px-4 py-2 rounded-t-lg border-b-2 transition-colors ${resultTab === 'cover' ? 'text-[var(--color-pirai-600)] border-[var(--color-pirai-500)] bg-[var(--color-pirai-50)]' : 'text-gray-400 border-transparent'}`}>
+                    Cover Letter
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2 pb-2">
+                <button onClick={() => { navigator.clipboard.writeText(getCopyText()); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                  {copied ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-pirai-500)]" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Copiado' : 'Copiar'}
+                </button>
+                {resultTab === 'cv' && (
+                  <button onClick={downloadPDF}
+                    className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-2.5 py-1.5 rounded-lg border border-[var(--color-pirai-200)] transition-colors">
+                    <FileText className="w-3.5 h-3.5" /> PDF
+                  </button>
+                )}
+                <button onClick={() => { setResult(null); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                  ← Nuevo
+                </button>
+              </div>
             </div>
-            <div className="flex-1 overflow-auto text-sm text-[var(--color-brand-dark)] whitespace-pre-line leading-relaxed">
-              {result.letter ?? JSON.stringify(result.cv, null, 2)}
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-5">
+              {resultTab === 'cover' ? (
+                <pre className="whitespace-pre-wrap font-sans text-sm text-[var(--color-brand-dark)] leading-relaxed">{result.coverLetter}</pre>
+              ) : cv ? (
+                <CVContent cv={cv} rName={rName} rEmail={rEmail} rLinkedin={rLinkedin} idioma={form.idioma} improving={improving} onImprove={improveSection} />
+              ) : null}
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-brand-muted)]">
+          <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-brand-muted)] p-8">
             <FileText className="w-10 h-10 mb-3 opacity-20" />
-            <p className="text-sm text-center">Completá el formulario y hacé clic en &quot;Generar CV&quot; para ver el resultado acá.</p>
+            <p className="text-sm text-center">Completá el formulario y hacé clic en &quot;Generar CV con IA&quot; para ver el resultado acá.</p>
           </div>
         )}
       </div>
@@ -739,77 +963,107 @@ function CVGenerator({ userId }: { userId: string | null }) {
 }
 
 function CartaGenerator({ userId }: { userId: string | null }) {
-  const [form, setForm] = useState({ rol: '', empresa: '', idioma: 'es', genero: 'femenino' });
+  const [form, setForm] = useState({ rol: '', empresa: '', idioma: 'es', genero: 'femenino', jobDescription: '', contexto: '' });
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const generate = useCallback(async () => {
+  const generate = async () => {
     if (!userId || !form.rol) return;
     setLoading(true);
     setError('');
     setResult('');
     try {
-      const res = await api.post<{ letter: string }>('/api/cover-letter/generate', { userId, ...form });
-      setResult(res.letter ?? '');
+      const res = await fetch('/api/generate-cv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...form, wantsCoverLetter: true, isGeneric: true, senderName: '' }),
+      });
+      const data = await res.json();
+      if (res.status === 429 || data.error === 'limit_reached') { setError('Límite de generaciones alcanzado en tu plan.'); return; }
+      if (!res.ok) throw new Error(data.error || 'Error generando la carta');
+      setResult(data.coverLetter || '');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error generando la carta');
     } finally {
       setLoading(false);
     }
-  }, [userId, form]);
+  };
 
   return (
-    <div className="max-w-4xl mx-auto grid grid-cols-2 gap-8">
-      <div className="space-y-5">
+    <div className="max-w-5xl mx-auto grid grid-cols-[400px_1fr] gap-8">
+      <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-1">Carta de presentación</h2>
+          <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-0.5">Carta de presentación</h2>
           <p className="text-sm text-[var(--color-brand-muted)]">Personalizada para cada empresa, en tu tono.</p>
         </div>
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Rol *</label>
-          <input value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))} placeholder="ej. Diseñadora UX" className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+          <input value={form.rol} onChange={e => setForm(p => ({ ...p, rol: e.target.value }))} placeholder="ej. Diseñadora UX"
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
         </div>
         <div>
-          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Empresa</label>
-          <input value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="ej. Spotify" className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Empresa (opcional)</label>
+          <input value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))} placeholder="ej. Spotify"
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Idioma</label>
-            <select value={form.idioma} onChange={e => setForm(p => ({ ...p, idioma: e.target.value }))} className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+            <select value={form.idioma} onChange={e => setForm(p => ({ ...p, idioma: e.target.value }))}
+              className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
               <option value="es">Español</option><option value="en">Inglés</option><option value="pt">Portugués</option>
             </select>
           </div>
           <div>
             <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Género</label>
-            <select value={form.genero} onChange={e => setForm(p => ({ ...p, genero: e.target.value }))} className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+            <select value={form.genero} onChange={e => setForm(p => ({ ...p, genero: e.target.value }))}
+              className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
               <option value="femenino">Femenino</option><option value="masculino">Masculino</option><option value="no_binario">No binario</option>
             </select>
           </div>
         </div>
+        <div>
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Descripción del puesto (opcional)</label>
+          <textarea rows={3} value={form.jobDescription} onChange={e => setForm(p => ({ ...p, jobDescription: e.target.value }))}
+            placeholder="Pegá la descripción del puesto para personalizar la carta..."
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Algo que quieras destacar (opcional)</label>
+          <textarea rows={2} value={form.contexto} onChange={e => setForm(p => ({ ...p, contexto: e.target.value }))}
+            placeholder="Motivación especial, proyectos relevantes, por qué esta empresa..."
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+        </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <button onClick={generate} disabled={loading || !form.rol} className="w-full flex items-center justify-center gap-2 bg-[var(--color-pirai-500)] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors">
+        <button onClick={generate} disabled={loading || !form.rol}
+          className="w-full flex items-center justify-center gap-2 bg-[var(--color-pirai-500)] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {loading ? 'Generando...' : 'Generar carta'}
         </button>
       </div>
-      <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5 min-h-[400px] flex flex-col">
+      <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] flex flex-col min-h-[500px]">
         {result ? (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm text-[var(--color-brand-dark)]">Tu carta</h3>
-              <button onClick={() => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] px-2 py-1 rounded-lg">
-                {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? 'Copiado' : 'Copiar'}
-              </button>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-brand-border)]">
+              <h3 className="font-semibold text-sm text-[var(--color-brand-dark)]">Tu carta de presentación</h3>
+              <div className="flex gap-2">
+                <button onClick={() => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                  className="flex items-center gap-1.5 text-xs text-gray-600 hover:bg-gray-100 px-2.5 py-1.5 rounded-lg transition-colors">
+                  {copied ? <CheckCircle className="w-3.5 h-3.5 text-[var(--color-pirai-500)]" /> : <Copy className="w-3.5 h-3.5" />} {copied ? 'Copiado' : 'Copiar'}
+                </button>
+                <button onClick={() => setResult('')} className="text-xs text-gray-400 hover:text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">← Nueva</button>
+              </div>
             </div>
-            <p className="flex-1 text-sm text-[var(--color-brand-dark)] whitespace-pre-line leading-relaxed overflow-auto">{result}</p>
+            <div className="flex-1 overflow-auto p-5">
+              <pre className="whitespace-pre-wrap font-sans text-sm text-[var(--color-brand-dark)] leading-relaxed">{result}</pre>
+            </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-brand-muted)]">
+          <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-brand-muted)] p-8">
             <Sparkles className="w-10 h-10 mb-3 opacity-20" />
-            <p className="text-sm text-center">Completá el formulario para generar tu carta.</p>
+            <p className="text-sm text-center">Completá el formulario para generar tu carta de presentación.</p>
           </div>
         )}
       </div>
@@ -818,74 +1072,104 @@ function CartaGenerator({ userId }: { userId: string | null }) {
 }
 
 function PrepGenerator({ userId }: { userId: string | null }) {
-  const [empresa, setEmpresa] = useState('');
-  const [rol, setRol] = useState('');
-  const [result, setResult] = useState<{ tips: string[]; resumen: string } | null>(null);
+  const [form, setForm] = useState({ companyName: '', role: '', jobDescription: '' });
+  type PrepResult = { intel?: string[]; tips?: Array<{ title: string; action: string }>; resumen?: string };
+  const [result, setResult] = useState<PrepResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const generate = useCallback(async () => {
-    if (!userId || !rol) return;
+  const generate = async () => {
+    if (!userId || !form.role) return;
     setLoading(true);
     setError('');
     try {
-      const res = await api.post<{ tips: string[]; resumen: string }>('/api/interview/prep', { userId, empresa, rol });
-      setResult(res);
+      const res = await fetch('/api/interview-prep', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...form, pastReviews: [] }),
+      });
+      const data = await res.json();
+      if (res.status === 429 || data.error === 'limit_reached') { setError('Límite de preparaciones alcanzado en tu plan esta semana.'); return; }
+      if (!res.ok) throw new Error(data.error || 'Error generando la prep');
+      setResult(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error generando la prep');
     } finally {
       setLoading(false);
     }
-  }, [userId, empresa, rol]);
+  };
 
   return (
-    <div className="max-w-4xl mx-auto grid grid-cols-2 gap-8">
-      <div className="space-y-5">
+    <div className="max-w-5xl mx-auto grid grid-cols-[400px_1fr] gap-8">
+      <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-1">Preparación de entrevista</h2>
-          <p className="text-sm text-[var(--color-brand-muted)]">Tips personalizados para tu próxima entrevista.</p>
+          <h2 className="text-lg font-bold text-[var(--color-brand-dark)] mb-0.5">Prep de entrevista</h2>
+          <p className="text-sm text-[var(--color-brand-muted)]">Intel de la empresa y tips personalizados para el rol.</p>
         </div>
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Rol *</label>
-          <input value={rol} onChange={e => setRol(e.target.value)} placeholder="ej. Data Analyst" className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+          <input value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))} placeholder="ej. Data Analyst"
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
         </div>
         <div>
-          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Empresa</label>
-          <input value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="ej. Rappi" className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Empresa (opcional)</label>
+          <input value={form.companyName} onChange={e => setForm(p => ({ ...p, companyName: e.target.value }))} placeholder="ej. Rappi"
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Descripción del puesto (opcional)</label>
+          <textarea rows={4} value={form.jobDescription} onChange={e => setForm(p => ({ ...p, jobDescription: e.target.value }))}
+            placeholder="Pegá la descripción del puesto para una prep más específica..."
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <button onClick={generate} disabled={loading || !rol} className="w-full flex items-center justify-center gap-2 bg-[var(--color-pirai-500)] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors">
+        <button onClick={generate} disabled={loading || !form.role}
+          className="w-full flex items-center justify-center gap-2 bg-[var(--color-pirai-500)] text-white py-3 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-          {loading ? 'Preparando...' : 'Generar prep'}
+          {loading ? 'Preparando...' : 'Preparar entrevista'}
         </button>
       </div>
-      <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5 min-h-[400px] flex flex-col">
+      <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] flex flex-col min-h-[500px]">
         {result ? (
-          <div className="space-y-4 overflow-auto">
+          <div className="flex-1 overflow-auto p-5 space-y-5">
             {result.resumen && (
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-2">Resumen</p>
-                <p className="text-sm text-[var(--color-brand-dark)] leading-relaxed">{result.resumen}</p>
+              <div className="bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl p-4">
+                <p className="text-[10px] font-bold text-[var(--color-pirai-600)] uppercase tracking-wider mb-2">En qué enfocarse</p>
+                <p className="text-sm text-[var(--color-pirai-800)] leading-relaxed">{result.resumen}</p>
               </div>
             )}
-            {result.tips?.length > 0 && (
+            {result.intel && result.intel.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-2">Tips para la entrevista</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Intel de la empresa</p>
                 <ul className="space-y-2">
-                  {result.tips.map((tip, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-brand-dark)]">
-                      <span className="text-[var(--color-pirai-500)] font-bold shrink-0">{i + 1}.</span>
-                      <span className="leading-relaxed">{tip}</span>
+                  {result.intel.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-[var(--color-brand-dark)]">
+                      <span className="w-5 h-5 rounded-full bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i+1}</span>
+                      <span className="leading-relaxed">{item}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
+            {result.tips && result.tips.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Tips para la entrevista</p>
+                <div className="space-y-3">
+                  {result.tips.map((tip, i) => (
+                    <div key={i} className="border border-[var(--color-brand-border)] rounded-xl p-3.5">
+                      <p className="font-semibold text-sm text-[var(--color-brand-dark)] mb-1">{tip.title}</p>
+                      <p className="text-xs text-gray-600 leading-relaxed">{tip.action}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button onClick={() => setResult(null)} className="text-xs text-gray-400 hover:text-gray-600">← Nueva prep</button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-brand-muted)]">
+          <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-brand-muted)] p-8">
             <CheckCircle className="w-10 h-10 mb-3 opacity-20" />
-            <p className="text-sm text-center">Ingresá el rol y la empresa para generar tu prep.</p>
+            <p className="text-sm text-center">Ingresá el rol y la empresa para recibir intel y tips personalizados.</p>
           </div>
         )}
       </div>
