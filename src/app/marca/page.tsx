@@ -96,28 +96,24 @@ function PerfilTab({ userId }: { userId: string | null }) {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${BASE}/api/bootstrap?userId=${userId}`);
+        const res = await fetch(`/api/user-record?userId=${userId}`);
         const data = await res.json();
-        const answers = data.user?.fields?.onboarding_answers
-          ? JSON.parse(data.user.fields.onboarding_answers)
-          : {};
-        const profile: ProfileData = {
-          stage: answers.stage || data.user?.fields?.stage,
-          fullName: data.user?.fields?.name || data.user?.fields?.fullName,
-          age_range: answers.age_range,
-          passion: data.user?.fields?.passion || answers.passion,
-          impact: data.user?.fields?.impact || answers.impact,
-          services_description: data.user?.fields?.services_description || answers.services_description,
-        };
-        setProfileData(profile);
+        const f = data.record?.fields || {};
+        const answers = f.onboarding_answers ? JSON.parse(f.onboarding_answers) : {};
 
-        // Load CV text
-        if (data.user?.fields?.cv_text) setCvText(data.user.fields.cv_text);
+        setProfileData({
+          stage: f.stage || answers.stage,
+          fullName: f.name || f.fullName || answers.fullName,
+          age_range: f.age_range || answers.age_range,
+          passion: f.passion || answers.passion,
+          impact: f.impact || answers.impact,
+          services_description: f.services_description || answers.services_description,
+        });
 
-        // Load existing analysis
-        const analysis = data.user?.fields?.profile_analysis;
-        if (analysis) {
-          try { setProfileAnalysis(JSON.parse(analysis)); } catch {}
+        if (f.cv_text) setCvText(f.cv_text);
+
+        if (f.profile_analysis) {
+          try { setProfileAnalysis(JSON.parse(f.profile_analysis)); } catch {}
         }
       } catch (e) {
         console.error(e);
