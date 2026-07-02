@@ -113,7 +113,13 @@ function PerfilTab({ userId }: { userId: string | null }) {
         if (f.cv_text) setCvText(f.cv_text);
 
         if (f.profile_analysis) {
-          try { setProfileAnalysis(JSON.parse(f.profile_analysis)); } catch {}
+          try {
+            const parsed = JSON.parse(f.profile_analysis);
+            setProfileAnalysis({
+              ...parsed,
+              analyzed_at: f.profile_analysis_date || parsed.analyzed_at,
+            });
+          } catch {}
         }
       } catch (e) {
         console.error(e);
@@ -124,7 +130,10 @@ function PerfilTab({ userId }: { userId: string | null }) {
     load();
   }, [userId]);
 
+  const isAdmin = typeof window !== 'undefined' && localStorage.getItem('pirai_email') === 'ale@alecadario.com';
+
   const canReanalyze = () => {
+    if (isAdmin) return true;
     if (!profileAnalysis?.analyzed_at) return true;
     const days = (Date.now() - new Date(profileAnalysis.analyzed_at).getTime()) / (1000 * 60 * 60 * 24);
     return days >= 7;
