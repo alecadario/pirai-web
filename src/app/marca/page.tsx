@@ -1,9 +1,10 @@
 'use client';
 
 import AppShell from '@/components/layout/AppShell';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getUserId } from '@/lib/auth';
-import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X } from 'lucide-react';
+import { generateCvPDF, cropImageToCircle } from '@/lib/pdf';
 
 
 type Tab = 'perfil' | 'cv';
@@ -706,6 +707,7 @@ function CVGenerator({ userId }: { userId: string | null }) {
     coverLetter?: string;
     userName?: string | null;
     userEmail?: string | null;
+    userPhone?: string | null;
     userLinkedin?: string | null;
     portafolio?: Record<string, unknown>;
   };
@@ -715,6 +717,9 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [improving, setImproving] = useState<string | null>(null);
+  const [cvPhoto, setCvPhoto] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const generate = async () => {
     if (!userId || !form.rol) return;
@@ -770,39 +775,31 @@ function CVGenerator({ userId }: { userId: string | null }) {
     setImproving(null);
   };
 
-  const downloadPDF = async () => {
-    if (!result?.cv) return;
-    const { jsPDF } = await import('jspdf');
-    const cv = result.cv as Record<string, unknown>;
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    const accent = CV_COLORS.find(c => c.key === form.colorTheme)?.color || '#00A86B';
-    const [r, g, b] = [parseInt(accent.slice(1,3),16), parseInt(accent.slice(3,5),16), parseInt(accent.slice(5,7),16)];
-    let y = 20;
-    const addText = (text: string, size: number, bold = false, color: [number,number,number] = [30,30,30]) => {
-      doc.setFontSize(size); doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setTextColor(...color);
-      const lines = doc.splitTextToSize(String(text), 175);
-      doc.text(lines, 15, y); y += lines.length * (size * 0.45) + 2;
-    };
-    if (rName) addText(rName, 18, true, [r,g,b]);
-    if (rEmail || rLinkedin) addText([rEmail, rLinkedin].filter(Boolean).join(' · '), 9, false, [100,100,100]);
-    y += 3;
-    if (cv.resumen) { addText(LANG_LABELS.resumen[form.idioma] || 'Perfil', 11, true, [r,g,b]); addText(String(cv.resumen), 9); y += 2; }
-    if ((cv.experiencia as unknown[])?.length) {
-      addText(LANG_LABELS.experiencia[form.idioma] || 'Experiencia', 11, true, [r,g,b]);
-      for (const exp of cv.experiencia as Record<string,unknown>[]) {
-        addText(`${exp.cargo} — ${exp.empresa}${exp.periodo ? ' · ' + exp.periodo : ''}`, 9, true);
-        for (const l of (exp.logros as string[]) || []) addText(`• ${l}`, 8);
-        y += 1;
-      }
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const cropped = await cropImageToCircle(url);
+    URL.revokeObjectURL(url);
+    if (cropped) setCvPhoto(cropped);
+    e.target.value = '';
+  };
+
+  const downloadPDF = async (isCV: boolean) => {
+    if (!result) return;
+    setPdfLoading(true);
+    try {
+      await generateCvPDF({
+        cvGenResult: result,
+        cvGenForm: form,
+        isCV,
+        cvPhoto,
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPdfLoading(false);
     }
-    if ((cv.educacion as unknown[])?.length) {
-      addText(LANG_LABELS.educacion[form.idioma] || 'Educación', 11, true, [r,g,b]);
-      for (const e of cv.educacion as Record<string,unknown>[]) addText(`${e.titulo} — ${e.institucion}${e.anio ? ' · ' + e.anio : ''}`, 9);
-      y += 1;
-    }
-    const habs = [...((cv.habilidades as string[]) || []), ...((cv.herramientas as string[]) || []), ...((cv.idiomas as string[]) || [])];
-    if (habs.length) { addText(LANG_LABELS.habilidades[form.idioma] || 'Habilidades', 11, true, [r,g,b]); addText(habs.join(' · '), 9); }
-    doc.save(`CV_${(rName || 'CV').replace(/\s/g,'_')}.pdf`);
   };
 
   const getCopyText = () => {
@@ -881,6 +878,29 @@ function CVGenerator({ userId }: { userId: string | null }) {
         </div>
 
         <div>
+          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-2">Foto de perfil (opcional)</label>
+          <div className="flex items-center gap-3">
+            {cvPhoto ? (
+              <div className="relative w-12 h-12">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={cvPhoto} alt="foto" className="w-12 h-12 rounded-full object-cover border-2 border-[var(--color-pirai-200)]" />
+                <button onClick={() => setCvPhoto(null)} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                  <X className="w-2.5 h-2.5 text-white" />
+                </button>
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+                <Camera className="w-5 h-5 text-gray-300" />
+              </div>
+            )}
+            <label className="cursor-pointer text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-3 py-1.5 rounded-lg transition-colors">
+              {cvPhoto ? 'Cambiar foto' : 'Subir foto'}
+              <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-2">Color del PDF</label>
           <div className="flex gap-2">
             {CV_COLORS.map(t => (
@@ -925,9 +945,15 @@ function CVGenerator({ userId }: { userId: string | null }) {
                   {copied ? 'Copiado' : 'Copiar'}
                 </button>
                 {resultTab === 'cv' && (
-                  <button onClick={downloadPDF}
-                    className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-2.5 py-1.5 rounded-lg border border-[var(--color-pirai-200)] transition-colors">
-                    <FileText className="w-3.5 h-3.5" /> PDF
+                  <button onClick={() => downloadPDF(true)} disabled={pdfLoading}
+                    className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-2.5 py-1.5 rounded-lg border border-[var(--color-pirai-200)] transition-colors disabled:opacity-50">
+                    {pdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} PDF
+                  </button>
+                )}
+                {resultTab === 'cover' && result?.coverLetter && (
+                  <button onClick={() => downloadPDF(false)} disabled={pdfLoading}
+                    className="flex items-center gap-1.5 text-xs text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-2.5 py-1.5 rounded-lg border border-[var(--color-pirai-200)] transition-colors disabled:opacity-50">
+                    {pdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} PDF
                   </button>
                 )}
                 <button onClick={() => { setResult(null); }}
