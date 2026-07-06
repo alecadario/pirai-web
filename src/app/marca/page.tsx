@@ -1074,7 +1074,7 @@ function CVGenerator({ userId }: { userId: string | null }) {
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-2">Foto de perfil (opcional)</label>
           <div className="flex items-center gap-3">
-            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }} />
             {cvPhoto ? (
               <div className="relative w-12 h-12 cursor-pointer" onClick={() => photoInputRef.current?.click()}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
