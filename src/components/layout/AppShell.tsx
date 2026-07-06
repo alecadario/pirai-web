@@ -10,6 +10,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    const hasAuthParams = new URLSearchParams(window.location.search).has('pirai_user_id');
+
+    if (hasAuthParams) {
+      // AuthHandler is processing the params — wait for it to set localStorage then re-check
+      const timer = setTimeout(() => {
+        if (isAuthenticated()) setReady(true);
+        else router.replace('/login');
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+
     if (!isAuthenticated()) {
       router.replace('/login');
     } else {
