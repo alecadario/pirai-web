@@ -8,11 +8,8 @@ export async function GET(req: NextRequest) {
 
   const res = await fetch(`${BACKEND}/api/user-record?userId=${userId}`);
   const data = await res.json();
-  console.log('[user/profile GET] raw data:', JSON.stringify(data).slice(0, 500));
   const f = data.record?.fields || {};
   const answers = f.onboarding_answers ? JSON.parse(f.onboarding_answers) : {};
-  console.log('[user/profile GET] fields keys:', Object.keys(f));
-  console.log('[user/profile GET] answers keys:', Object.keys(answers));
 
   return NextResponse.json({
     stage: f.stage || answers.stage || null,

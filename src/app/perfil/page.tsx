@@ -3,7 +3,6 @@
 import AppShell from '@/components/layout/AppShell';
 import { useEffect, useState, useCallback } from 'react';
 import { getUserId, getUserEmail, getUserName } from '@/lib/auth';
-import { api } from '@/lib/api';
 import { Loader2, User, Save, CheckCircle } from 'lucide-react';
 
 interface ProfileData {
@@ -29,8 +28,8 @@ export default function PerfilPage() {
     if (!userId) return;
     setLoading(true);
     try {
-      const res = await api.get<{ profile: ProfileData } & ProfileData>(`/api/user/profile?userId=${userId}`);
-      const p = res.profile ?? res;
+      const res = await fetch(`/api/user/profile?userId=${userId}`);
+      const p = await res.json();
       setProfile(p);
     } finally {
       setLoading(false);
@@ -43,7 +42,11 @@ export default function PerfilPage() {
     if (!userId) return;
     setSaving(true);
     try {
-      await api.post('/api/user/profile', { userId, ...profile });
+      await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...profile }),
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
