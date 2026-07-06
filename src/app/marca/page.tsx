@@ -778,7 +778,9 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [improving, setImproving] = useState<string | null>(null);
-  const [cvPhoto, setCvPhoto] = useState<string | null>(null);
+  const [cvPhoto, setCvPhoto] = useState<string | null>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('pirai_profile_photo') : null
+  );
   const [pdfLoading, setPdfLoading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [empresas, setEmpresas] = useState<PipelineCompany[]>([]);
@@ -870,8 +872,16 @@ function CVGenerator({ userId }: { userId: string | null }) {
     const url = URL.createObjectURL(file);
     const cropped = await cropImageToCircle(url);
     URL.revokeObjectURL(url);
-    if (cropped) setCvPhoto(cropped);
+    if (cropped) {
+      setCvPhoto(cropped);
+      localStorage.setItem('pirai_profile_photo', cropped);
+    }
     e.target.value = '';
+  };
+
+  const removePhoto = () => {
+    setCvPhoto(null);
+    localStorage.removeItem('pirai_profile_photo');
   };
 
   const downloadPDF = async (isCV: boolean) => {
@@ -1042,7 +1052,7 @@ function CVGenerator({ userId }: { userId: string | null }) {
               <div className="relative w-12 h-12">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={cvPhoto} alt="foto" className="w-12 h-12 rounded-full object-cover border-2 border-[var(--color-pirai-200)]" />
-                <button onClick={() => setCvPhoto(null)} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                <button onClick={removePhoto} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                   <X className="w-2.5 h-2.5 text-white" />
                 </button>
               </div>
