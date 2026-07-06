@@ -1,7 +1,7 @@
 'use client';
 
 import AppShell from '@/components/layout/AppShell';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { getUserId } from '@/lib/auth';
 import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X, Mail, Send } from 'lucide-react';
 import { generateCvPDF, cropImageToCircle } from '@/lib/pdf';
@@ -780,7 +780,6 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const [improving, setImproving] = useState<string | null>(null);
   const [cvPhoto, setCvPhoto] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const photoInputRef = useRef<HTMLInputElement>(null);
   const [empresas, setEmpresas] = useState<PipelineCompany[]>([]);
   const [contactos, setContactos] = useState<PipelineContact[]>([]);
   const [gmailConnected, setGmailConnected] = useState(false);
@@ -1072,36 +1071,26 @@ function CVGenerator({ userId }: { userId: string | null }) {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-2">Foto de perfil (opcional)</label>
+          <p className="text-xs font-semibold text-[var(--color-brand-muted)] mb-2">Foto de perfil (opcional)</p>
           <div className="flex items-center gap-3">
-            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }} />
-            {cvPhoto ? (
-              <div className="relative w-12 h-12 cursor-pointer" onClick={() => photoInputRef.current?.click()}>
+            {cvPhoto && (
+              <div className="relative w-12 h-12 shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={cvPhoto} alt="foto" className="w-12 h-12 rounded-full object-cover border-2 border-[var(--color-pirai-200)]" />
                 <button
                   type="button"
-                  onClick={e => { e.stopPropagation(); removePhoto(); }}
+                  onClick={removePhoto}
                   className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center"
                 >
                   <X className="w-2.5 h-2.5 text-white" />
                 </button>
               </div>
-            ) : (
-              <div
-                className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 cursor-pointer hover:border-[var(--color-pirai-400)] transition-colors"
-                onClick={() => photoInputRef.current?.click()}
-              >
-                <Camera className="w-5 h-5 text-gray-300" />
-              </div>
             )}
-            <button
-              type="button"
-              onClick={() => photoInputRef.current?.click()}
-              className="text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-3 py-1.5 rounded-lg transition-colors"
-            >
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-3 py-1.5 rounded-lg transition-colors">
+              <Camera className="w-3.5 h-3.5" />
               {cvPhoto ? 'Cambiar foto' : 'Subir foto'}
-            </button>
+              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+            </label>
           </div>
         </div>
 
