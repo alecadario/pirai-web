@@ -3,7 +3,7 @@
 import AppShell from '@/components/layout/AppShell';
 import { useState, useEffect, useRef } from 'react';
 import { getUserId } from '@/lib/auth';
-import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X, Mail, Send } from 'lucide-react';
 import { generateCvPDF, cropImageToCircle } from '@/lib/pdf';
 
 
@@ -697,7 +697,7 @@ const LANG_LABELS: Record<string, Record<string, string>> = {
 };
 
 type PipelineCompany = { id: string; name: string };
-type PipelineContact = { id: string; name: string; empresaId: string | null; empresaNombre: string };
+type PipelineContact = { id: string; name: string; email?: string; empresaId: string | null; empresaNombre: string };
 
 function EmpresaPicker({ empresas, empresaId, empresa, onChange }: {
   empresas: PipelineCompany[];
@@ -783,6 +783,13 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [empresas, setEmpresas] = useState<PipelineCompany[]>([]);
   const [contactos, setContactos] = useState<PipelineContact[]>([]);
+  const [gmailConnected, setGmailConnected] = useState(false);
+  type ComposeData = {
+    to: string; subject: string; body: string; attachments: Array<{ filename: string; base64: string; mimeType: string }>;
+  };
+  const [compose, setCompose] = useState<ComposeData | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -792,6 +799,10 @@ function CVGenerator({ userId }: { userId: string | null }) {
         setEmpresas(d.companies || []);
         setContactos(d.contacts || []);
       })
+      .catch(() => {});
+    fetch(`/api/gmail-check?userId=${userId}`)
+      .then(r => r.json())
+      .then(d => setGmailConnected(!!d.connected))
       .catch(() => {});
   }, [userId]);
 
@@ -867,16 +878,57 @@ function CVGenerator({ userId }: { userId: string | null }) {
     if (!result) return;
     setPdfLoading(true);
     try {
-      await generateCvPDF({
-        cvGenResult: result,
-        cvGenForm: form,
-        isCV,
-        cvPhoto,
-      });
+      await generateCvPDF({ cvGenResult: result, cvGenForm: form, isCV, cvPhoto });
     } catch (e) {
       console.error(e);
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  const openCompose = async () => {
+    if (!result) return;
+    setPdfLoading(true);
+    try {
+      const hasCoverLetter = !!result.coverLetter;
+      const b64 = await generateCvPDF({ cvGenResult: result, cvGenForm: form, isCV: true, cvPhoto, returnBase64: true, combined: hasCoverLetter });
+      if (!b64 || typeof b64 !== 'string') { alert('No se pudo generar el PDF'); return; }
+      const fname = hasCoverLetter
+        ? `CV_CoverLetter_${(result.userName || '').replace(/\s/g, '_')}.pdf`
+        : `CV_${(result.userName || '').replace(/\s/g, '_')}.pdf`;
+      const contacto = contactos.find(c => c.name === form.contactName);
+      const to = contacto?.email || '';
+      const subject = `${form.rol}${form.empresa ? ` - ${form.empresa}` : ''}`;
+      const bodies: Record<string, string> = {
+        es: `Buen día,\n\nLe hago llegar adjunto mi CV${hasCoverLetter ? ' y carta de presentación' : ''} para la posición de ${form.rol}${form.empresa ? ` en ${form.empresa}` : ''}.\n\nQuedo a su disposición para ampliar información o coordinar una entrevista.\n\nMuchas gracias,\n${result.userName || ''}`,
+        en: `Hello,\n\nPlease find attached my CV${hasCoverLetter ? ' and cover letter' : ''} for the ${form.rol} position${form.empresa ? ` at ${form.empresa}` : ''}.\n\nI would love to connect and discuss how I can contribute.\n\nBest regards,\n${result.userName || ''}`,
+        pt: `Olá,\n\nSegue em anexo meu CV${hasCoverLetter ? ' e carta de apresentação' : ''} para a vaga de ${form.rol}${form.empresa ? ` na ${form.empresa}` : ''}.\n\nFico à disposição para conversarmos.\n\nAtenciosamente,\n${result.userName || ''}`,
+      };
+      setCompose({ to, subject, body: bodies[form.idioma] || bodies.es, attachments: [{ filename: fname, base64: b64, mimeType: 'application/pdf' }] });
+      setEmailSent(false);
+    } catch (e) {
+      alert('Error preparando el email: ' + (e instanceof Error ? e.message : 'Error'));
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const sendEmail = async () => {
+    if (!compose || !userId) return;
+    setSendingEmail(true);
+    try {
+      const res = await fetch('/api/gmail-send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, to: compose.to, subject: compose.subject, body: compose.body, attachments: compose.attachments }),
+      });
+      if (!res.ok) throw new Error('Error enviando');
+      setEmailSent(true);
+      setTimeout(() => { setCompose(null); setEmailSent(false); }, 2000);
+    } catch {
+      alert('Error enviando el email. Verificá que Gmail esté conectado.');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -1062,6 +1114,12 @@ function CVGenerator({ userId }: { userId: string | null }) {
                     {pdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />} PDF
                   </button>
                 )}
+                {gmailConnected && (
+                  <button onClick={openCompose} disabled={pdfLoading}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-teal-600 bg-teal-50 hover:bg-teal-100 px-2.5 py-1.5 rounded-lg border border-teal-200 transition-colors disabled:opacity-50">
+                    {pdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} Enviar por Gmail
+                  </button>
+                )}
                 <button onClick={() => { setResult(null); }}
                   className="text-xs text-gray-400 hover:text-gray-600 px-2.5 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                   ← Nuevo
@@ -1085,6 +1143,65 @@ function CVGenerator({ userId }: { userId: string | null }) {
           </div>
         )}
       </div>
+
+      {/* Compose modal */}
+      {compose && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-teal-500" />
+                <h3 className="font-bold text-[var(--color-brand-dark)]">Enviar por Gmail</h3>
+              </div>
+              <button onClick={() => setCompose(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-5 space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">Para</label>
+                <input
+                  value={compose.to}
+                  onChange={e => setCompose(p => p ? { ...p, to: e.target.value } : p)}
+                  placeholder="email@empresa.com"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">Asunto</label>
+                <input
+                  value={compose.subject}
+                  onChange={e => setCompose(p => p ? { ...p, subject: e.target.value } : p)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">Mensaje</label>
+                <textarea
+                  value={compose.body}
+                  onChange={e => setCompose(p => p ? { ...p, body: e.target.value } : p)}
+                  rows={7}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
+                />
+              </div>
+              <div className="flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-lg px-3 py-2">
+                <FileText className="w-4 h-4 text-teal-500 shrink-0" />
+                <span className="text-xs text-teal-700 font-medium">{compose.attachments[0]?.filename}</span>
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+              <button onClick={() => setCompose(null)} className="text-sm text-gray-500 px-4 py-2 rounded-lg hover:bg-gray-100">Cancelar</button>
+              <button
+                onClick={sendEmail}
+                disabled={sendingEmail || !compose.to || emailSent}
+                className="flex items-center gap-2 text-sm font-semibold text-white bg-teal-500 hover:bg-teal-600 px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {emailSent ? <><CheckCircle className="w-4 h-4" /> Enviado</> : sendingEmail ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</> : <><Send className="w-4 h-4" /> Enviar</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
