@@ -34,6 +34,9 @@ interface ProfileAnalysis {
 export default function MarcaPage() {
   const [tab, setTab] = useState<Tab>('perfil');
   const userId = getUserId();
+  const [sharedProfile, setSharedProfile] = useState<ProfileData>({});
+  const [sharedCvText, setSharedCvText] = useState('');
+  const [sharedPhoto, setSharedPhoto] = useState<string | null>(null);
 
   const TABS = [
     { id: 'perfil' as Tab, label: 'Mi Perfil', icon: User },
@@ -65,18 +68,47 @@ export default function MarcaPage() {
 
         {/* Content */}
         <div className="flex-1 p-8 overflow-auto">
-          {tab === 'perfil' && <PerfilTab userId={userId} />}
-          {tab === 'cv' && <CVGenerator userId={userId} />}
+          {tab === 'perfil' && (
+            <PerfilTab
+              userId={userId}
+              sharedProfile={sharedProfile}
+              setSharedProfile={setSharedProfile}
+              sharedCvText={sharedCvText}
+              setSharedCvText={setSharedCvText}
+              sharedPhoto={sharedPhoto}
+              setSharedPhoto={setSharedPhoto}
+            />
+          )}
+          {tab === 'cv' && (
+            <CVGenerator
+              userId={userId}
+              sharedProfile={sharedProfile}
+              sharedPhoto={sharedPhoto}
+              setSharedPhoto={setSharedPhoto}
+            />
+          )}
         </div>
       </div>
     </AppShell>
   );
 }
 
-function PerfilTab({ userId }: { userId: string | null }) {
-  const [profileData, setProfileData] = useState<ProfileData>({});
+function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto }: {
+  userId: string | null;
+  sharedProfile: ProfileData;
+  setSharedProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
+  sharedCvText: string;
+  setSharedCvText: React.Dispatch<React.SetStateAction<string>>;
+  sharedPhoto: string | null;
+  setSharedPhoto: React.Dispatch<React.SetStateAction<string | null>>;
+}) {
+  const profileData = sharedProfile;
+  const setProfileData = setSharedProfile;
+  const cvText = sharedCvText;
+  const setCvText = setSharedCvText;
+  const profilePhoto = sharedPhoto;
+  const setProfilePhoto = setSharedPhoto;
   const [profileAnalysis, setProfileAnalysis] = useState<ProfileAnalysis | null>(null);
-  const [cvText, setCvText] = useState('');
   const [cvUploading, setCvUploading] = useState(false);
   const [servicesUploading, setServicesUploading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -85,12 +117,13 @@ function PerfilTab({ userId }: { userId: string | null }) {
   const [formData, setFormData] = useState<ProfileData>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   const isBiz = profileData.stage === 'emprendedor' || profileData.stage === 'freelancer' || profileData.stage === 'empresa';
 
   useEffect(() => {
     if (!userId) return;
+    // If shared state already populated, skip fetching again
+    if (sharedProfile.fullName) { setLoading(false); return; }
     const load = async () => {
       setLoading(true);
       try {
@@ -795,7 +828,12 @@ function EmpresaPicker({ empresas, empresaId, empresa, onChange }: {
   );
 }
 
-function CVGenerator({ userId }: { userId: string | null }) {
+function CVGenerator({ userId, sharedProfile, sharedPhoto, setSharedPhoto }: {
+  userId: string | null;
+  sharedProfile: ProfileData;
+  sharedPhoto: string | null;
+  setSharedPhoto: React.Dispatch<React.SetStateAction<string | null>>;
+}) {
   const [form, setForm] = useState({
     rol: '', empresa: '', empresaId: null as string | null,
     idioma: 'es', genero: 'femenino',
@@ -817,7 +855,8 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [improving, setImproving] = useState<string | null>(null);
-  const [cvPhoto, setCvPhoto] = useState<string | null>(null);
+  const cvPhoto = sharedPhoto;
+  const setCvPhoto = setSharedPhoto;
   const [pdfLoading, setPdfLoading] = useState(false);
   const [empresas, setEmpresas] = useState<PipelineCompany[]>([]);
   const [contactos, setContactos] = useState<PipelineContact[]>([]);
@@ -839,23 +878,11 @@ function CVGenerator({ userId }: { userId: string | null }) {
       .then(r => r.json())
       .then(d => setGmailConnected(!!d.connected))
       .catch(() => {});
-    // Load profile photo: Airtable first, fallback to localStorage
-    fetch(`/api/user-record?userId=${userId}`)
-      .then(r => r.json())
-      .then(d => {
-        const photo = d.record?.fields?.profile_photo;
-        if (photo) {
-          setCvPhoto(photo);
-          localStorage.setItem('pirai_profile_photo', photo);
-        } else {
-          const local = localStorage.getItem('pirai_profile_photo');
-          if (local) setCvPhoto(local);
-        }
-      })
-      .catch(() => {
-        const local = localStorage.getItem('pirai_profile_photo');
-        if (local) setCvPhoto(local);
-      });
+    // Photo is managed via sharedPhoto from MarcaPage (loaded in PerfilTab)
+    if (!cvPhoto) {
+      const local = localStorage.getItem('pirai_profile_photo');
+      if (local) setCvPhoto(local);
+    }
   }, [userId]);
 
   const filteredContacts = form.empresaId
