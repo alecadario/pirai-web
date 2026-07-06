@@ -696,11 +696,72 @@ const LANG_LABELS: Record<string, Record<string, string>> = {
   logros: { es: 'Logros Clave', en: 'Key Achievements', pt: 'Conquistas-Chave' },
 };
 
+type PipelineCompany = { id: string; name: string };
+type PipelineContact = { id: string; name: string; empresaId: string | null; empresaNombre: string };
+
+function EmpresaPicker({ empresas, empresaId, empresa, onChange }: {
+  empresas: PipelineCompany[];
+  empresaId: string | null;
+  empresa: string;
+  onChange: (empresa: string, empresaId: string | null) => void;
+}) {
+  const [manual, setManual] = useState(false);
+
+  const selectValue = empresaId ? empresaId : manual ? '__manual__' : '__none__';
+
+  return (
+    <div>
+      <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Empresa (opcional)</label>
+      {empresas.length > 0 ? (
+        <>
+          <select
+            value={selectValue}
+            onChange={e => {
+              const val = e.target.value;
+              if (val === '__none__') { setManual(false); onChange('', null); }
+              else if (val === '__manual__') { setManual(true); onChange('', null); }
+              else {
+                const em = empresas.find(x => x.id === val);
+                setManual(false);
+                onChange(em?.name || '', val);
+              }
+            }}
+            className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+          >
+            <option value="__none__">Sin empresa específica</option>
+            <optgroup label="Mis empresas">
+              {empresas.map(em => <option key={em.id} value={em.id}>{em.name}</option>)}
+            </optgroup>
+            <option value="__manual__">✏️ Escribir manualmente</option>
+          </select>
+          {manual && (
+            <input
+              value={empresa}
+              onChange={e => onChange(e.target.value, null)}
+              placeholder="ej. Mercado Libre"
+              className="mt-2 w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+              autoFocus
+            />
+          )}
+        </>
+      ) : (
+        <input
+          value={empresa}
+          onChange={e => onChange(e.target.value, null)}
+          placeholder="ej. Mercado Libre"
+          className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+        />
+      )}
+    </div>
+  );
+}
+
 function CVGenerator({ userId }: { userId: string | null }) {
   const [form, setForm] = useState({
-    rol: '', empresa: '', idioma: 'es', genero: 'femenino',
+    rol: '', empresa: '', empresaId: null as string | null,
+    idioma: 'es', genero: 'femenino',
     jobDescription: '', contexto: '', wantsCoverLetter: false,
-    isGeneric: true, colorTheme: 'esmeralda',
+    contactName: '', isGeneric: true, colorTheme: 'esmeralda',
   });
   type CvResult = {
     cv?: Record<string, unknown>;
@@ -720,6 +781,23 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const [cvPhoto, setCvPhoto] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [empresas, setEmpresas] = useState<PipelineCompany[]>([]);
+  const [contactos, setContactos] = useState<PipelineContact[]>([]);
+
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/pipeline-data?userId=${userId}`)
+      .then(r => r.json())
+      .then(d => {
+        setEmpresas(d.companies || []);
+        setContactos(d.contacts || []);
+      })
+      .catch(() => {});
+  }, [userId]);
+
+  const filteredContacts = form.empresaId
+    ? contactos.filter(c => c.empresaId === form.empresaId)
+    : contactos;
 
   const generate = async () => {
     if (!userId || !form.rol) return;
@@ -830,12 +908,12 @@ function CVGenerator({ userId }: { userId: string | null }) {
             className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
         </div>
 
-        <div>
-          <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Empresa (opcional)</label>
-          <input value={form.empresa} onChange={e => setForm(p => ({ ...p, empresa: e.target.value }))}
-            placeholder="ej. Mercado Libre"
-            className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
-        </div>
+        <EmpresaPicker
+          empresas={empresas}
+          empresaId={form.empresaId}
+          empresa={form.empresa}
+          onChange={(empresa, empresaId) => setForm(p => ({ ...p, empresa, empresaId, contactName: '' }))}
+        />
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -868,13 +946,41 @@ function CVGenerator({ userId }: { userId: string | null }) {
             className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
         </div>
 
-        <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+        <div className="bg-gray-50 rounded-xl p-3 space-y-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.wantsCoverLetter}
               onChange={e => setForm(p => ({ ...p, wantsCoverLetter: e.target.checked }))}
               className="rounded accent-[var(--color-pirai-600)]" />
             <span className="text-sm font-medium text-gray-700">Generar cover letter también</span>
           </label>
+          {form.wantsCoverLetter && (
+            <div>
+              <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">
+                Dirigida a (opcional)
+              </label>
+              {filteredContacts.length > 0 ? (
+                <select
+                  value={form.contactName}
+                  onChange={e => setForm(p => ({ ...p, contactName: e.target.value, isGeneric: !e.target.value }))}
+                  className="w-full border border-[var(--color-brand-border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+                >
+                  <option value="">Equipo de {form.empresa || 'la empresa'} (genérica)</option>
+                  {filteredContacts.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}{c.empresaNombre ? ` · ${c.empresaNombre}` : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={form.contactName}
+                  onChange={e => setForm(p => ({ ...p, contactName: e.target.value, isGeneric: !e.target.value }))}
+                  placeholder="Nombre del contacto (opcional)"
+                  className="w-full border border-[var(--color-brand-border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         <div>
