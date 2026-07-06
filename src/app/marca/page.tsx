@@ -85,6 +85,7 @@ function PerfilTab({ userId }: { userId: string | null }) {
   const [formData, setFormData] = useState<ProfileData>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   const isBiz = profileData.stage === 'emprendedor' || profileData.stage === 'freelancer' || profileData.stage === 'empresa';
 
@@ -109,6 +110,10 @@ function PerfilTab({ userId }: { userId: string | null }) {
 
         if (f.cv_text) setCvText(f.cv_text);
 
+        // Load profile photo
+        const photo = f.profile_photo || localStorage.getItem('pirai_profile_photo');
+        if (photo) setProfilePhoto(photo);
+
         if (f.profile_analysis) {
           try {
             const parsed = JSON.parse(f.profile_analysis);
@@ -126,6 +131,31 @@ function PerfilTab({ userId }: { userId: string | null }) {
     };
     load();
   }, [userId]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const cropped = await cropImageToCircle(dataUrl);
+      const photo = cropped || dataUrl;
+      setProfilePhoto(photo);
+      localStorage.setItem('pirai_profile_photo', photo);
+      await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, profile_photo: photo }),
+      });
+    } catch (err) {
+      console.error('Error uploading photo', err);
+    }
+    e.target.value = '';
+  };
 
   const isAdmin = typeof window !== 'undefined' && localStorage.getItem('pirai_email') === 'ale@alecadario.com';
 
@@ -277,9 +307,18 @@ function PerfilTab({ userId }: { userId: string | null }) {
         <div className="px-5 pb-5 -mt-10">
           <div className="flex items-end gap-4">
             <div className="relative">
-              <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md bg-gray-100 flex items-center justify-center">
-                <User className="w-8 h-8 text-gray-300" />
-              </div>
+              <label className="cursor-pointer group block">
+                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                <div className="w-20 h-20 rounded-2xl border-4 border-white shadow-md bg-gray-100 flex items-center justify-center overflow-hidden relative">
+                  {profilePhoto
+                    ? <img src={profilePhoto} alt="Foto" className="w-full h-full object-cover" />
+                    : <User className="w-8 h-8 text-gray-300" />
+                  }
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                    <Camera className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+              </label>
               <span className={`absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
                 isBiz ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-teal-100 text-teal-700 border border-teal-200'
               }`}>
