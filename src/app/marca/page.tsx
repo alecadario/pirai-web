@@ -778,9 +778,7 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [improving, setImproving] = useState<string | null>(null);
-  const [cvPhoto, setCvPhoto] = useState<string | null>(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('pirai_profile_photo') : null
-  );
+  const [cvPhoto, setCvPhoto] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [empresas, setEmpresas] = useState<PipelineCompany[]>([]);
@@ -797,15 +795,29 @@ function CVGenerator({ userId }: { userId: string | null }) {
     if (!userId) return;
     fetch(`/api/pipeline-data?userId=${userId}`)
       .then(r => r.json())
-      .then(d => {
-        setEmpresas(d.companies || []);
-        setContactos(d.contacts || []);
-      })
+      .then(d => { setEmpresas(d.companies || []); setContactos(d.contacts || []); })
       .catch(() => {});
     fetch(`/api/gmail-check?userId=${userId}`)
       .then(r => r.json())
       .then(d => setGmailConnected(!!d.connected))
       .catch(() => {});
+    // Load profile photo: Airtable first, fallback to localStorage
+    fetch(`/api/user-record?userId=${userId}`)
+      .then(r => r.json())
+      .then(d => {
+        const photo = d.record?.fields?.profile_photo;
+        if (photo) {
+          setCvPhoto(photo);
+          localStorage.setItem('pirai_profile_photo', photo);
+        } else {
+          const local = localStorage.getItem('pirai_profile_photo');
+          if (local) setCvPhoto(local);
+        }
+      })
+      .catch(() => {
+        const local = localStorage.getItem('pirai_profile_photo');
+        if (local) setCvPhoto(local);
+      });
   }, [userId]);
 
   const filteredContacts = form.empresaId
@@ -875,6 +887,13 @@ function CVGenerator({ userId }: { userId: string | null }) {
     if (cropped) {
       setCvPhoto(cropped);
       localStorage.setItem('pirai_profile_photo', cropped);
+      if (userId) {
+        fetch('/api/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, profile_photo: cropped }),
+        }).catch(() => {});
+      }
     }
     e.target.value = '';
   };
@@ -882,6 +901,13 @@ function CVGenerator({ userId }: { userId: string | null }) {
   const removePhoto = () => {
     setCvPhoto(null);
     localStorage.removeItem('pirai_profile_photo');
+    if (userId) {
+      fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, profile_photo: '' }),
+      }).catch(() => {});
+    }
   };
 
   const downloadPDF = async (isCV: boolean) => {
@@ -1048,23 +1074,34 @@ function CVGenerator({ userId }: { userId: string | null }) {
         <div>
           <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-2">Foto de perfil (opcional)</label>
           <div className="flex items-center gap-3">
+            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
             {cvPhoto ? (
-              <div className="relative w-12 h-12">
+              <div className="relative w-12 h-12 cursor-pointer" onClick={() => photoInputRef.current?.click()}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={cvPhoto} alt="foto" className="w-12 h-12 rounded-full object-cover border-2 border-[var(--color-pirai-200)]" />
-                <button onClick={removePhoto} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); removePhoto(); }}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center"
+                >
                   <X className="w-2.5 h-2.5 text-white" />
                 </button>
               </div>
             ) : (
-              <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50">
+              <div
+                className="w-12 h-12 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 cursor-pointer hover:border-[var(--color-pirai-400)] transition-colors"
+                onClick={() => photoInputRef.current?.click()}
+              >
                 <Camera className="w-5 h-5 text-gray-300" />
               </div>
             )}
-            <label className="cursor-pointer text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-3 py-1.5 rounded-lg transition-colors">
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className="text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] hover:bg-[var(--color-pirai-100)] px-3 py-1.5 rounded-lg transition-colors"
+            >
               {cvPhoto ? 'Cambiar foto' : 'Subir foto'}
-              <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-            </label>
+            </button>
           </div>
         </div>
 
