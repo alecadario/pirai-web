@@ -100,11 +100,15 @@ export default function PerfilPage() {
                 className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
               >
                 <option value="">Sin definir</option>
+                <option value="buscando">Buscando empleo</option>
                 <option value="job_seeker">Buscando empleo</option>
                 <option value="emprendedor">Emprendedor/a</option>
                 <option value="freelancer">Freelancer</option>
                 <option value="transicion">En transición</option>
                 <option value="empresa">Empresa</option>
+                {profile.stage && !['', 'buscando', 'job_seeker', 'emprendedor', 'freelancer', 'transicion', 'empresa'].includes(profile.stage) && (
+                  <option value={profile.stage}>{profile.stage}</option>
+                )}
               </select>
             </Field>
 
