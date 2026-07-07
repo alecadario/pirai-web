@@ -43,6 +43,16 @@ interface CuratedCourse {
   free: boolean;
 }
 
+interface CompletedCourse {
+  id: string;
+  course_title: string;
+  platform: string;
+  url: string;
+  description: string;
+  tags: string;
+  completed_at: string;
+}
+
 export default function MarcaPage() {
   const [tab, setTab] = useState<Tab>('perfil');
   const userId = getUserId();
@@ -50,12 +60,19 @@ export default function MarcaPage() {
   const [sharedCvText, setSharedCvText] = useState('');
   const [sharedPhoto, setSharedPhoto] = useState<string | null>(null);
   const [curatedCourses, setCuratedCourses] = useState<CuratedCourse[]>([]);
+  const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([]);
 
   useEffect(() => {
     fetch('/api/courses').then(r => r.json()).then(d => {
       if (d.courses) setCuratedCourses(d.courses);
     }).catch(() => {});
-  }, []);
+    if (userId) {
+      fetch(`/api/course-progress?userId=${userId}`).then(r => r.json()).then(d => {
+        const done = (d.courses || []).filter((c: CompletedCourse & { status: string }) => c.status === 'completed');
+        setCompletedCourses(done);
+      }).catch(() => {});
+    }
+  }, [userId]);
 
   const TABS = [
     { id: 'perfil' as Tab, label: 'Mi Perfil', icon: User },
@@ -97,6 +114,7 @@ export default function MarcaPage() {
               sharedPhoto={sharedPhoto}
               setSharedPhoto={setSharedPhoto}
               curatedCourses={curatedCourses}
+              completedCourses={completedCourses}
             />
           )}
           {tab === 'cv' && (
@@ -147,7 +165,7 @@ function matchCuratedCourse(title: string, platform: string, curated: CuratedCou
   return best || null;
 }
 
-function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto, curatedCourses }: {
+function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto, curatedCourses, completedCourses }: {
   userId: string | null;
   sharedProfile: ProfileData;
   setSharedProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
@@ -156,6 +174,7 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
   sharedPhoto: string | null;
   setSharedPhoto: React.Dispatch<React.SetStateAction<string | null>>;
   curatedCourses: CuratedCourse[];
+  completedCourses: CompletedCourse[];
 }) {
   const profileData = sharedProfile;
   const setProfileData = setSharedProfile;
@@ -444,6 +463,42 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
         </div>
       )}
 
+      {/* Cursos y recursos completados */}
+      {completedCourses.length > 0 && (
+        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
+            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación completada</p>
+            <span className="text-[10px] bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full font-semibold ml-auto">Suma al CV con IA ✨</span>
+          </div>
+          <div className="space-y-3">
+            {completedCourses.map(course => (
+              <div key={course.id} className="border border-[var(--color-brand-border)] rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--color-brand-dark)]">{course.course_title}</p>
+                    <p className="text-xs text-[var(--color-brand-muted)] mt-0.5">{course.platform}{course.completed_at ? ` · ${new Date(course.completed_at).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })}` : ''}</p>
+                  </div>
+                  {course.url && (
+                    <a href={course.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-[var(--color-pirai-600)] hover:underline shrink-0">Ver curso →</a>
+                  )}
+                </div>
+                {course.description && (
+                  <p className="text-xs text-[var(--color-brand-muted)] mt-1.5 leading-relaxed">{course.description}</p>
+                )}
+                {course.tags && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {course.tags.split(',').filter(t => t.trim()).map(tag => (
+                      <span key={tag} className="text-[9px] bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-1.5 py-0.5 rounded-full">{tag.trim()}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Lo que sabemos */}
       {profileAnalysis?.lo_que_sabemos && (
         <div className="bg-gradient-to-r from-[var(--color-pirai-50)] to-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-4">
@@ -554,6 +609,7 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
                             platform: c.platform,
                             url: href,
                             tags: curated?.tags?.join(', ') || '',
+                            description: curated?.description || c.reason || '',
                           }),
                         }).catch(() => {});
                       }}

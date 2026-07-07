@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { getUserId } from '@/lib/auth';
 import {
   Loader2, TrendingUp, Target, Users, BarChart3,
-  Lightbulb, RefreshCw, Briefcase, Award, BookOpen, Check, X,
+  Lightbulb, RefreshCw, Briefcase, Award, BookOpen,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -122,7 +122,6 @@ export default function InsightsPage() {
   const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
   const [allCourses, setAllCourses] = useState<CourseProgress[]>([]);
-  const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -170,21 +169,6 @@ export default function InsightsPage() {
     }
   }, []);
 
-  const handleCourseUpdate = async (course: CourseProgress, status: 'completed' | 'skipped') => {
-    setCourseUpdating(course.id);
-    try {
-      await fetch('/api/course-progress', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags }),
-      });
-      setAllCourses(prev => prev.map(c => c.id === course.id ? { ...c, status, completed_at: status === 'completed' ? new Date().toISOString() : c.completed_at } : c));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setCourseUpdating(null);
-    }
-  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -283,83 +267,50 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        {/* Pending courses smart box */}
-        {pendingCourses.length > 0 && (
-          <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[var(--color-brand-dark)]">¿Cómo vas con tus recursos?</p>
-                <p className="text-xs text-[var(--color-brand-muted)]">Marcá los que completaste para que actualicemos tus skills</p>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              {pendingCourses.map(course => (
-                <div key={course.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--color-brand-dark)] truncate">{course.course_title}</p>
-                    <p className="text-xs text-[var(--color-brand-muted)]">{course.platform} · abierto {formatDaysAgo(course.started_at)}</p>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() => handleCourseUpdate(course, 'completed')}
-                      disabled={courseUpdating === course.id}
-                      className="flex items-center gap-1.5 text-xs font-semibold bg-[var(--color-pirai-500)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors"
-                    >
-                      {courseUpdating === course.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                      Lo completé
-                    </button>
-                    <button
-                      onClick={() => handleCourseUpdate(course, 'skipped')}
-                      disabled={courseUpdating === course.id}
-                      className="flex items-center gap-1.5 text-xs font-semibold bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
-                    >
-                      <X className="w-3 h-3" /> No lo hice
-                    </button>
-                  </div>
+        {/* Profesionalización — stats cuantitativas */}
+        {allCourses.length > 0 && (() => {
+          const byPlatform: Record<string, { total: number; completed: number }> = {};
+          allCourses.forEach(c => {
+            const p = c.platform || 'Otro';
+            if (!byPlatform[p]) byPlatform[p] = { total: 0, completed: 0 };
+            byPlatform[p].total++;
+            if (c.status === 'completed') byPlatform[p].completed++;
+          });
+          const totalCompleted = completedCourses.length;
+          const totalStarted = allCourses.length;
+          return (
+            <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-[var(--color-pirai-100)] flex items-center justify-center">
+                  <BookOpen className="w-4 h-4 text-[var(--color-pirai-600)]" />
                 </div>
-              ))}
+                <div>
+                  <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Profesionalización</p>
+                  <p className="text-xs text-[var(--color-brand-muted)]">{totalCompleted} de {totalStarted} recursos completados</p>
+                </div>
+                <div className="ml-auto text-right">
+                  <p className="text-xl font-bold text-[var(--color-pirai-600)]">{totalStarted > 0 ? Math.round((totalCompleted / totalStarted) * 100) : 0}%</p>
+                  <p className="text-[10px] text-[var(--color-brand-muted)]">completado</p>
+                </div>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2 mb-4">
+                <div className="bg-[var(--color-pirai-500)] h-2 rounded-full transition-all" style={{ width: `${totalStarted > 0 ? (totalCompleted / totalStarted) * 100 : 0}%` }} />
+              </div>
+              <div className="space-y-2">
+                {Object.entries(byPlatform).sort((a, b) => b[1].total - a[1].total).map(([platform, stat]) => (
+                  <div key={platform} className="flex items-center gap-3">
+                    <span className="text-xs text-[var(--color-brand-muted)] w-28 shrink-0">{platform}</span>
+                    <div className="flex-1 bg-gray-100 rounded-full h-2">
+                      <div className="bg-[var(--color-pirai-500)] h-2 rounded-full" style={{ width: `${Math.min(100, (stat.completed / stat.total) * 100)}%` }} />
+                    </div>
+                    <span className="text-xs text-[var(--color-brand-muted)] w-16 text-right shrink-0">{stat.completed}/{stat.total} hecho{stat.total !== 1 ? 's' : ''}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
-        {/* Completed courses dashboard */}
-        {completedCourses.length > 0 && (
-          <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-[var(--color-pirai-100)] flex items-center justify-center">
-                <Award className="w-4 h-4 text-[var(--color-pirai-600)]" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Recursos completados</p>
-                <p className="text-xs text-[var(--color-brand-muted)]">{completedCourses.length} {completedCourses.length === 1 ? 'recurso completado' : 'recursos completados'}</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {completedCourses.map(course => (
-                <div key={course.id} className="flex items-center gap-3 bg-[var(--color-pirai-50)] rounded-xl px-4 py-3">
-                  <Check className="w-4 h-4 text-[var(--color-pirai-500)] shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--color-brand-dark)] truncate">{course.course_title}</p>
-                    <p className="text-xs text-[var(--color-brand-muted)]">
-                      {course.platform}
-                      {course.completed_at && ` · completado ${formatDaysAgo(course.completed_at)}`}
-                    </p>
-                    {course.tags && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {course.tags.split(',').slice(0, 3).map(tag => (
-                          <span key={tag} className="text-[9px] bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-1.5 py-0.5 rounded-full">{tag.trim()}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Main KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

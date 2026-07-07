@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import {
   Loader2, TrendingUp, Users, Activity, Building2,
   Sparkles, RefreshCw, Send, Target, Zap, Play,
-  ChevronRight, AlertCircle, ArrowUpRight,
+  ChevronRight, AlertCircle, ArrowUpRight, BookOpen, Check, X,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -262,6 +262,15 @@ const TAG_BADGE: Record<string, string> = {
   'aprendé': 'bg-[#1BCDD1]/10 text-[#0fa8ac]',
 };
 
+interface CourseProgress {
+  id: string;
+  course_title: string;
+  platform: string;
+  tags: string;
+  started_at: string;
+  status: string;
+}
+
 export default function DashboardPage() {
   const [profileData, setProfileData] = useState<ProfileData>({});
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -272,6 +281,8 @@ export default function DashboardPage() {
   const [suggestedCompanies, setSuggestedCompanies] = useState<SuggestedCompany[]>([]);
   const [suggestedLoading, setSuggestedLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [pendingCourses, setPendingCourses] = useState<CourseProgress[]>([]);
+  const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
 
   const userId = getUserId();
   const name = getUserName()?.split(' ')[0] ?? '';
@@ -344,8 +355,29 @@ export default function DashboardPage() {
     } catch { /* silent */ } finally { setSuggestedLoading(false); }
   }, [userId, empresas]);
 
-  useEffect(() => { loadData(); loadInsight(); }, [loadData, loadInsight]);
+  useEffect(() => {
+    loadData();
+    loadInsight();
+    if (userId) {
+      fetch(`/api/course-progress?userId=${userId}`)
+        .then(r => r.json())
+        .then(d => setPendingCourses((d.courses || []).filter((c: CourseProgress) => c.status === 'started')))
+        .catch(() => {});
+    }
+  }, [loadData, loadInsight, userId]);
   useEffect(() => { if (!loading) loadSuggestedCompanies(); }, [loading, loadSuggestedCompanies]);
+
+  const handleCourseUpdate = async (course: CourseProgress, status: 'completed' | 'skipped') => {
+    setCourseUpdating(course.id);
+    try {
+      await fetch('/api/course-progress', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags }),
+      });
+      setPendingCourses(prev => prev.filter(c => c.id !== course.id));
+    } catch { /* silent */ } finally { setCourseUpdating(null); }
+  };
 
   const isBizUser = ['emprendedor', 'freelancer', 'empresa'].includes(profileData?.stage ?? '');
 
@@ -472,6 +504,42 @@ export default function DashboardPage() {
                 <p className="text-2xl font-bold text-[#2D3748]">{actividades.length}</p>
                 <p className="text-xs text-[#718096] mt-1">Actividades totales</p>
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* CURSOS PENDIENTES */}
+        {pendingCourses.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider mb-4">¿Cómo vas con tus recursos?</h3>
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 space-y-2.5">
+              <p className="text-xs text-[#718096] mb-3">Marcá los que completaste para que actualicemos tus skills</p>
+              {pendingCourses.map(course => (
+                <div key={course.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                  <BookOpen className="w-4 h-4 text-amber-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#2D3748] truncate">{course.course_title}</p>
+                    <p className="text-xs text-[#718096]">{course.platform}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => handleCourseUpdate(course, 'completed')}
+                      disabled={courseUpdating === course.id}
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white px-3 py-1.5 rounded-lg hover:bg-[#008a58] disabled:opacity-50 transition-colors"
+                    >
+                      {courseUpdating === course.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      Lo completé
+                    </button>
+                    <button
+                      onClick={() => handleCourseUpdate(course, 'skipped')}
+                      disabled={courseUpdating === course.id}
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                    >
+                      <X className="w-3 h-3" /> No lo hice
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
