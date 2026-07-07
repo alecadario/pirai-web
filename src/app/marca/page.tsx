@@ -613,21 +613,24 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
                   const courseTitle = curated?.title || c.title;
                   return (
                     <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                      onClick={() => {
+                      onClick={async (e) => {
                         if (!userId) return;
+                        e.preventDefault();
                         onCourseClicked(courseTitle);
-                        fetch('/api/course-progress', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            userId,
-                            course_title: courseTitle,
-                            platform: c.platform,
-                            url: href,
-                            tags: curated?.tags?.join(', ') || '',
-                            description: curated?.description || c.reason || '',
-                          }),
-                        }).catch(() => {});
+                        try {
+                          await fetch('/api/course-progress', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              userId,
+                              course_title: courseTitle,
+                              platform: c.platform,
+                              url: href,
+                              tags: curated?.tags?.join(', ') || '',
+                            }),
+                          });
+                        } catch { /* silent */ }
+                        window.open(href, '_blank', 'noopener,noreferrer');
                       }}
                       className="block bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl px-3 py-2.5 hover:bg-[var(--color-pirai-100)] transition-colors group">
                       <div className="flex items-start justify-between gap-2">
