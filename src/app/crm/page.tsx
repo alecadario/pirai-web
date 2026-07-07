@@ -179,6 +179,7 @@ function CRMPageInner() {
   const [selected, setSelected] = useState<Empresa | Contacto | null>(null);
   const [empresaFilter, setEmpresaFilter] = useState<EmpresaFilter>('todas');
   const [eventFilter, setEventFilter] = useState<EventFilter>('todos');
+  const [selectedEvent, setSelectedEvent] = useState<Evento | null>(null);
   const [userName, setUserName] = useState('');
   const [userStage, setUserStage] = useState('');
   const [showNewEmpresa, setShowNewEmpresa] = useState(false);
@@ -402,7 +403,7 @@ function CRMPageInner() {
               {TABS.map(({ id, label, icon: Icon, count }) => (
                 <button
                   key={id}
-                  onClick={() => { setTab(id); setSelected(null); setSearch(''); }}
+                  onClick={() => { setTab(id); setSelected(null); setSelectedEvent(null); setSearch(''); }}
                   className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition-colors ${
                     tab === id
                       ? 'text-[var(--color-pirai-600)] border-[var(--color-pirai-500)] bg-[var(--color-pirai-50)]'
@@ -465,12 +466,15 @@ function CRMPageInner() {
                 eventos={eventos}
                 contactos={contactos}
                 actividades={actividades}
+                empresas={empresas}
                 eventFilter={eventFilter}
                 setEventFilter={setEventFilter}
                 coachTip={getNetworkingCoachTip()}
                 BASE={BASE}
                 userId={userId ?? ''}
-                onDeleteEvento={(id) => setEventos(prev => prev.filter(e => e.id !== id))}
+                selectedEvent={selectedEvent}
+                onSelectEvent={setSelectedEvent}
+                onDeleteEvento={(id) => { setEventos(prev => prev.filter(e => e.id !== id)); if (selectedEvent?.id === id) setSelectedEvent(null); }}
                 onContactAdded={load}
                 onEventAdded={load}
               />
@@ -480,7 +484,24 @@ function CRMPageInner() {
 
         {/* ── Detail panel ── */}
         <div className="w-[420px] bg-white overflow-auto border-l border-[var(--color-brand-border)]">
-          {selected ? (
+          {tab === 'networking' && selectedEvent ? (
+            <div key={selectedEvent.id} className="h-full overflow-auto p-4">
+              <EventoDetail
+                event={selectedEvent}
+                contactos={contactos}
+                empresas={empresas}
+                BASE={BASE}
+                userId={userId ?? ''}
+                onClose={() => setSelectedEvent(null)}
+                onContactAdded={load}
+                onEventUpdated={(updated) => {
+                  setEventos(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated } : e));
+                  setSelectedEvent(updated);
+                }}
+                onEventDeleted={(id) => { setEventos(prev => prev.filter(e => e.id !== id)); setSelectedEvent(null); }}
+              />
+            </div>
+          ) : selected ? (
             <div key={(selected as Empresa | Contacto).id} className="h-full overflow-auto">
             {tab === 'empresas' ? (
               <EmpresaDetail
@@ -705,24 +726,27 @@ function buildGoogleCalendarUrl(event: Evento): string {
 
 const EVENT_FORM_EMPTY = { name: '', date: '', time: '', duration: '2', end_date: '', type: 'presencial', contactGoal: '5', country: '', city: '', location: '', details: '' };
 
-function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFilter, coachTip, BASE, userId, onDeleteEvento, onContactAdded, onEventAdded }: {
+function EventosPanel({ eventos, contactos, actividades, empresas, eventFilter, setEventFilter, coachTip, BASE, userId, selectedEvent, onSelectEvent, onDeleteEvento, onContactAdded, onEventAdded }: {
   eventos: Evento[];
   contactos: Contacto[];
   actividades: Actividad[];
+  empresas: Empresa[];
   eventFilter: EventFilter;
   setEventFilter: (f: EventFilter) => void;
   coachTip: { icon: string; text: string };
   BASE: string;
   userId: string;
+  selectedEvent: Evento | null;
+  onSelectEvent: (e: Evento | null) => void;
   onDeleteEvento: (id: string) => void;
   onContactAdded: () => void;
   onEventAdded: () => void;
 }) {
   const today = new Date().toISOString().split('T')[0];
-  const [selectedEvent, setSelectedEvent] = useState<Evento | null>(null);
   const [showNewContact, setShowNewContact] = useState(false);
   const [newContactEvent, setNewContactEvent] = useState<Evento | null>(null);
-  const [newContactForm, setNewContactForm] = useState({ name: '', title: '', email: '', phone: '', linkedin_url: '' });
+  const [newContactForm, setNewContactForm] = useState({ name: '', title: '', email: '', phone: '', linkedin_url: '', empresa_id: '' });
+  const [inlineEmpresaContact, setInlineEmpresaContact] = useState({ name: '', industry: '' });
   const [savingContact, setSavingContact] = useState(false);
   const [confirmDelEvento, setConfirmDelEvento] = useState<Evento | null>(null);
   const [deletingEvento, setDeletingEvento] = useState(false);
@@ -752,6 +776,14 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
     if (!newContactForm.name.trim() || !newContactEvent) return;
     setSavingContact(true);
     try {
+      let empresaId = newContactForm.empresa_id;
+      if (empresaId === '__new__') {
+        if (!inlineEmpresaContact.name.trim()) { alert('Escribí el nombre de la empresa'); setSavingContact(false); return; }
+        const er = await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresaContact.name, industry: inlineEmpresaContact.industry, priority: 'media', status: 'investigando' }) });
+        const ed = await er.json();
+        empresaId = ed.id || ed.empresa?.id || '';
+        setInlineEmpresaContact({ name: '', industry: '' });
+      }
       await fetch(`${BASE}/api/crm/contacto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -764,10 +796,11 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
           linkedinUrl: newContactForm.linkedin_url.trim(),
           stage: 'primer_contacto',
           eventSource: newContactEvent.name,
+          empresaId: empresaId || undefined,
         }),
       });
       setShowNewContact(false);
-      setNewContactForm({ name: '', title: '', email: '', phone: '', linkedin_url: '' });
+      setNewContactForm({ name: '', title: '', email: '', phone: '', linkedin_url: '', empresa_id: '' });
       onContactAdded();
     } finally { setSavingContact(false); }
   };
@@ -777,7 +810,6 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
     setDeletingEvento(true);
     try {
       await fetch(`${BASE}/api/events`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, eventId: confirmDelEvento.id }) });
-      if (selectedEvent?.id === confirmDelEvento.id) setSelectedEvent(null);
       onDeleteEvento(confirmDelEvento.id);
       setConfirmDelEvento(null);
     } finally { setDeletingEvento(false); }
@@ -794,7 +826,6 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
           body: JSON.stringify({ eventId: showEditEvento.id, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }),
         });
         setShowEditEvento(null);
-        if (selectedEvent?.id === showEditEvento.id) setSelectedEvent(prev => prev ? { ...prev, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details } : null);
         onEventAdded();
       } else {
         await fetch(`${BASE}/api/events`, {
@@ -808,197 +839,6 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
       setEventoForm(EVENT_FORM_EMPTY);
     } finally { setSavingEvento(false); }
   };
-
-  // ── Event detail view ──
-  if (selectedEvent) {
-    const event = selectedEvent;
-    const eventContacts = contactos.filter(c => c.eventSource === event.name);
-    const progress = (event.contactGoal ?? 0) > 0 ? Math.min(100, Math.round(((event.contactsMet ?? 0) / (event.contactGoal ?? 1)) * 100)) : 0;
-    const isComplete = (event.contactsMet ?? 0) >= (event.contactGoal ?? 1) && (event.contactGoal ?? 0) > 0;
-    const typeLabel = EVENT_TYPE_LABELS[event.type ?? ''] || event.type || '';
-
-    return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-[var(--color-brand-gray)] rounded-lg">
-            <ChevronRight className="w-5 h-5 text-gray-600 rotate-180" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-[var(--color-brand-dark)] truncate">{event.name}</h2>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              {event.date && (
-                <span className="text-xs text-gray-500 flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> {event.date}{event.time ? ` · ${event.time}` : ''}
-                </span>
-              )}
-              {typeLabel && (
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${event.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]'}`}>
-                  {typeLabel}
-                </span>
-              )}
-            </div>
-          </div>
-          <button
-            onClick={() => { setEventoForm({ name: event.name, date: event.date ?? '', time: event.time ?? '', duration: String(event.duration ?? 2), end_date: event.end_date ?? '', type: event.type ?? 'presencial', contactGoal: String(event.contactGoal ?? 5), country: event.country ?? '', city: event.city ?? '', location: event.location ?? '', details: event.details ?? '' }); setShowEditEvento(event); }}
-            className="p-2 hover:bg-[var(--color-pirai-50)] rounded-lg text-gray-400 hover:text-[var(--color-pirai-500)] transition-colors"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setConfirmDelEvento(event)}
-            className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Progress */}
-        <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-700">Meta de contactos</p>
-            <p className="text-sm font-bold text-[var(--color-pirai-600)]">{event.contactsMet ?? 0} / {event.contactGoal ?? 0}</p>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div className={`h-2.5 rounded-full transition-all ${isComplete ? 'bg-[var(--color-pirai-500)]' : 'bg-[var(--color-pirai-600)]'}`} style={{ width: `${progress}%` }} />
-          </div>
-          <p className="text-xs text-gray-400 mt-1">{isComplete ? '¡Meta cumplida!' : `${progress}% completado`}</p>
-        </div>
-
-        {/* Location / details */}
-        {(event.location || event.city || event.country || event.details) && (
-          <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm space-y-2">
-            {(event.location || event.city || event.country) && (
-              <p className="text-sm text-gray-600">📍 {[event.location, event.city, event.country].filter(Boolean).join(', ')}</p>
-            )}
-            {event.details && <p className="text-sm text-gray-600 whitespace-pre-line">{event.details}</p>}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setNewContactEvent(event); setShowNewContact(true); }}
-            className="flex-1 bg-[var(--color-pirai-600)] text-white px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[var(--color-pirai-700)]"
-          >
-            <Plus className="w-4 h-4" /> Conocí a alguien
-          </button>
-          <a
-            href={buildGoogleCalendarUrl(event)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-[var(--color-turquesa-50)] text-[var(--color-turquesa-600)] px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[var(--color-turquesa-100)] border border-[var(--color-turquesa-200)] transition-colors"
-          >
-            <Calendar className="w-4 h-4" /> Agendar
-          </a>
-        </div>
-
-        {/* Contacts from event */}
-        <div>
-          <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-2">Contactos ({eventContacts.length})</p>
-          {eventContacts.length === 0 ? (
-            <div className="bg-[var(--color-brand-gray)] rounded-2xl p-5 text-center">
-              <p className="text-sm text-gray-400">Todavía no registraste contactos de este evento.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {eventContacts.map(c => (
-                <div key={c.id} className="bg-white rounded-xl p-3 border border-[var(--color-brand-border)] flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-pirai-400)] to-[var(--color-turquesa-500)] flex items-center justify-center text-white font-bold text-xs shrink-0">
-                    {c.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--color-brand-dark)] truncate">{c.name}</p>
-                    {c.title && <p className="text-xs text-gray-500 truncate">{c.title}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Delete confirm */}
-        {confirmDelEvento && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-              <p className="font-semibold text-[var(--color-brand-dark)] mb-2">¿Eliminar evento?</p>
-              <p className="text-sm text-gray-500 mb-4">Se eliminará <strong>{confirmDelEvento.name}</strong>. Esta acción no se puede deshacer.</p>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmDelEvento(null)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
-                <button onClick={handleDeleteEvento} disabled={deletingEvento} className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50">
-                  {deletingEvento ? 'Eliminando...' : 'Eliminar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* New contact modal */}
-        {showNewContact && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-[var(--color-brand-dark)]">Conocí a alguien en {newContactEvent?.name}</p>
-                <button onClick={() => setShowNewContact(false)}><X className="w-4 h-4 text-gray-400" /></button>
-              </div>
-              {(['name', 'title', 'email', 'phone', 'linkedin_url'] as const).map(field => (
-                <input key={field} value={newContactForm[field]} onChange={e => setNewContactForm(p => ({ ...p, [field]: e.target.value }))}
-                  placeholder={{ name: 'Nombre *', title: 'Cargo', email: 'Email', phone: 'Teléfono', linkedin_url: 'LinkedIn URL' }[field]}
-                  className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
-                />
-              ))}
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => setShowNewContact(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600">Cancelar</button>
-                <button onClick={handleSaveContact} disabled={savingContact || !newContactForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
-                  {savingContact ? 'Guardando...' : 'Guardar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Edit evento modal (also available from detail view) */}
-        {showEditEvento && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">Editar evento</h3>
-                <button onClick={() => { setShowEditEvento(null); setEventoForm(EVENT_FORM_EMPTY); }}><X className="w-5 h-5 text-gray-400" /></button>
-              </div>
-              <input value={eventoForm.name} onChange={e => setEventoForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre del evento *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-gray-500 mb-1 block">Fecha inicio</label><input type="date" value={eventoForm.date} onChange={e => setEventoForm(p => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
-                <div><label className="text-[10px] text-gray-500 mb-1 block">Fecha fin</label><input type="date" value={eventoForm.end_date} onChange={e => setEventoForm(p => ({ ...p, end_date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-[10px] text-gray-500 mb-1 block">Hora</label><input type="time" value={eventoForm.time} onChange={e => setEventoForm(p => ({ ...p, time: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
-                <div><label className="text-[10px] text-gray-500 mb-1 block">Duración (hs)</label><input type="number" min="0.5" step="0.5" value={eventoForm.duration} onChange={e => setEventoForm(p => ({ ...p, duration: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
-              </div>
-              <select value={eventoForm.type} onChange={e => setEventoForm(p => ({ ...p, type: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
-                <option value="presencial">Presencial</option>
-                <option value="online">Online</option>
-                <option value="hibrido">Híbrido</option>
-                <option value="otro">Otro</option>
-              </select>
-              <div><label className="text-[10px] text-gray-500 mb-1 block">Meta de contactos</label><input type="number" min="0" value={eventoForm.contactGoal} onChange={e => setEventoForm(p => ({ ...p, contactGoal: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
-              <div className="grid grid-cols-2 gap-2">
-                <input value={eventoForm.country} onChange={e => setEventoForm(p => ({ ...p, country: e.target.value }))} placeholder="País" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
-                <input value={eventoForm.city} onChange={e => setEventoForm(p => ({ ...p, city: e.target.value }))} placeholder="Ciudad" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
-              </div>
-              <input value={eventoForm.location} onChange={e => setEventoForm(p => ({ ...p, location: e.target.value }))} placeholder="Lugar / dirección" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
-              <textarea value={eventoForm.details} onChange={e => setEventoForm(p => ({ ...p, details: e.target.value }))} placeholder="Detalles adicionales" rows={3} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
-              <div className="flex gap-2 pt-1">
-                <button onClick={() => { setShowEditEvento(null); setEventoForm(EVENT_FORM_EMPTY); }} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
-                <button onClick={handleSaveEvento} disabled={savingEvento || !eventoForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
-                  {savingEvento ? 'Guardando...' : 'Guardar cambios'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
 
   // ── Event list view ──
   return (
@@ -1059,7 +899,7 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
             return (
               <div key={event.id} className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
                 {/* Clickable header → detail */}
-                <button className="w-full text-left" onClick={() => setSelectedEvent(event)}>
+                <button className="w-full text-left" onClick={() => onSelectEvent(event)}>
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="font-semibold text-[var(--color-brand-dark)]">{event.name}</p>
@@ -1212,7 +1052,7 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
       {/* New contact modal */}
       {showNewContact && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-3">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <p className="font-semibold text-[var(--color-brand-dark)]">Conocí a alguien en {newContactEvent?.name}</p>
               <button onClick={() => setShowNewContact(false)}><X className="w-4 h-4 text-gray-400" /></button>
@@ -1223,10 +1063,258 @@ function EventosPanel({ eventos, contactos, actividades, eventFilter, setEventFi
                 className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
               />
             ))}
+            <select value={newContactForm.empresa_id} onChange={e => { setNewContactForm(p => ({ ...p, empresa_id: e.target.value })); if (e.target.value !== '__new__') setInlineEmpresaContact({ name: '', industry: '' }); }} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              <option value="">Empresa (opcional)</option>
+              <option value="__new__">＋ Crear nueva empresa</option>
+              {empresas.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+            {newContactForm.empresa_id === '__new__' && (
+              <div className="bg-[var(--color-brand-gray)] rounded-xl p-3 space-y-2 border border-dashed border-gray-300">
+                <p className="text-xs font-medium text-gray-500">Nueva empresa</p>
+                <input value={inlineEmpresaContact.name} onChange={e => setInlineEmpresaContact(p => ({ ...p, name: e.target.value }))} placeholder="Nombre de la empresa *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+                <input value={inlineEmpresaContact.industry} onChange={e => setInlineEmpresaContact(p => ({ ...p, industry: e.target.value }))} placeholder="Industria" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+            )}
             <div className="flex gap-2 pt-1">
               <button onClick={() => setShowNewContact(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600">Cancelar</button>
               <button onClick={handleSaveContact} disabled={savingContact || !newContactForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
                 {savingContact ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── EventoDetail ─────────────────────────────────────────────────────────────
+
+function EventoDetail({ event, contactos, empresas, BASE, userId, onClose, onContactAdded, onEventUpdated, onEventDeleted }: {
+  event: Evento;
+  contactos: Contacto[];
+  empresas: Empresa[];
+  BASE: string;
+  userId: string;
+  onClose: () => void;
+  onContactAdded: () => void;
+  onEventUpdated: (e: Evento) => void;
+  onEventDeleted: (id: string) => void;
+}) {
+  const eventContacts = contactos.filter(c => c.eventSource === event.name);
+  const progress = (event.contactGoal ?? 0) > 0 ? Math.min(100, Math.round(((event.contactsMet ?? 0) / (event.contactGoal ?? 1)) * 100)) : 0;
+  const isComplete = (event.contactsMet ?? 0) >= (event.contactGoal ?? 1) && (event.contactGoal ?? 0) > 0;
+  const typeLabel = EVENT_TYPE_LABELS[event.type ?? ''] || event.type || '';
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [contactForm, setContactForm] = useState({ name: '', title: '', email: '', phone: '', linkedin_url: '', empresa_id: '' });
+  const [inlineEmpresa, setInlineEmpresa] = useState({ name: '', industry: '' });
+  const [savingContact, setSavingContact] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [eventoForm, setEventoForm] = useState({ name: event.name, date: event.date ?? '', time: event.time ?? '', duration: String(event.duration ?? 2), end_date: event.end_date ?? '', type: event.type ?? 'presencial', contactGoal: String(event.contactGoal ?? 5), country: event.country ?? '', city: event.city ?? '', location: event.location ?? '', details: event.details ?? '' });
+  const [savingEvento, setSavingEvento] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleSaveContact = async () => {
+    if (!contactForm.name.trim()) return;
+    setSavingContact(true);
+    try {
+      let empresaId = contactForm.empresa_id;
+      if (empresaId === '__new__') {
+        if (!inlineEmpresa.name.trim()) { alert('Escribí el nombre de la empresa'); setSavingContact(false); return; }
+        const er = await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresa.name, industry: inlineEmpresa.industry, priority: 'media', status: 'investigando' }) });
+        const ed = await er.json();
+        empresaId = ed.id || ed.empresa?.id || '';
+        setInlineEmpresa({ name: '', industry: '' });
+      }
+      await fetch(`${BASE}/api/crm/contacto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name: contactForm.name.trim(), title: contactForm.title.trim(), email: contactForm.email.trim(), phone: contactForm.phone.trim(), linkedinUrl: contactForm.linkedin_url.trim(), stage: 'primer_contacto', eventSource: event.name, empresaId: empresaId || undefined }),
+      });
+      setShowNewContact(false);
+      setContactForm({ name: '', title: '', email: '', phone: '', linkedin_url: '', empresa_id: '' });
+      onContactAdded();
+    } finally { setSavingContact(false); }
+  };
+
+  const handleSaveEvento = async () => {
+    if (!eventoForm.name.trim()) return;
+    setSavingEvento(true);
+    try {
+      await fetch(`${BASE}/api/events`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: event.id, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }) });
+      onEventUpdated({ ...event, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details });
+      setShowEdit(false);
+    } finally { setSavingEvento(false); }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await fetch(`${BASE}/api/events`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, eventId: event.id }) });
+      onEventDeleted(event.id);
+    } finally { setDeleting(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <button onClick={onClose} className="p-2 hover:bg-[var(--color-brand-gray)] rounded-lg">
+          <ChevronRight className="w-5 h-5 text-gray-600 rotate-180" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-[var(--color-brand-dark)] truncate">{event.name}</h2>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {event.date && <span className="text-xs text-gray-500 flex items-center gap-1"><Calendar className="w-3 h-3" /> {event.date}{event.time ? ` · ${event.time}` : ''}</span>}
+            {typeLabel && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${event.type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]'}`}>{typeLabel}</span>}
+          </div>
+        </div>
+        <button onClick={() => setShowEdit(true)} className="p-2 hover:bg-[var(--color-pirai-50)] rounded-lg text-gray-400 hover:text-[var(--color-pirai-500)] transition-colors"><Pencil className="w-4 h-4" /></button>
+        <button onClick={() => setConfirmDel(true)} className="p-2 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+      </div>
+
+      {/* Progress */}
+      <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold text-gray-700">Meta de contactos</p>
+          <p className="text-sm font-bold text-[var(--color-pirai-600)]">{event.contactsMet ?? 0} / {event.contactGoal ?? 0}</p>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5">
+          <div className={`h-2.5 rounded-full transition-all ${isComplete ? 'bg-[var(--color-pirai-500)]' : 'bg-[var(--color-pirai-600)]'}`} style={{ width: `${progress}%` }} />
+        </div>
+        <p className="text-xs text-gray-400 mt-1">{isComplete ? '¡Meta cumplida!' : `${progress}% completado`}</p>
+      </div>
+
+      {/* Location / details */}
+      {(event.location || event.city || event.country || event.details) && (
+        <div className="bg-white rounded-2xl p-4 border border-[var(--color-brand-border)] shadow-sm space-y-2">
+          {(event.location || event.city || event.country) && <p className="text-sm text-gray-600">📍 {[event.location, event.city, event.country].filter(Boolean).join(', ')}</p>}
+          {event.details && <p className="text-sm text-gray-600 whitespace-pre-line">{event.details}</p>}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button onClick={() => setShowNewContact(true)} className="flex-1 bg-[var(--color-pirai-600)] text-white px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[var(--color-pirai-700)]">
+          <Plus className="w-4 h-4" /> Conocí a alguien
+        </button>
+        <a href={buildGoogleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="bg-[var(--color-turquesa-50)] text-[var(--color-turquesa-600)] px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[var(--color-turquesa-100)] border border-[var(--color-turquesa-200)] transition-colors">
+          <Calendar className="w-4 h-4" /> Agendar
+        </a>
+      </div>
+
+      {/* Contacts from event */}
+      <div>
+        <p className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-2">Contactos ({eventContacts.length})</p>
+        {eventContacts.length === 0 ? (
+          <div className="bg-[var(--color-brand-gray)] rounded-2xl p-5 text-center">
+            <p className="text-sm text-gray-400">Todavía no registraste contactos de este evento.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {eventContacts.map(c => (
+              <div key={c.id} className="bg-white rounded-xl p-3 border border-[var(--color-brand-border)] flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--color-pirai-400)] to-[var(--color-turquesa-500)] flex items-center justify-center text-white font-bold text-xs shrink-0">
+                  {c.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[var(--color-brand-dark)] truncate">{c.name}</p>
+                  {c.title && <p className="text-xs text-gray-500 truncate">{c.title}</p>}
+                  {c.empresaNombre && <p className="text-xs text-gray-400 truncate">{c.empresaNombre}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* New contact modal */}
+      {showNewContact && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-[var(--color-brand-dark)]">Conocí a alguien en {event.name}</p>
+              <button onClick={() => setShowNewContact(false)}><X className="w-4 h-4 text-gray-400" /></button>
+            </div>
+            {(['name', 'title', 'email', 'phone', 'linkedin_url'] as const).map(field => (
+              <input key={field} value={contactForm[field]} onChange={e => setContactForm(p => ({ ...p, [field]: e.target.value }))}
+                placeholder={{ name: 'Nombre *', title: 'Cargo', email: 'Email', phone: 'Teléfono', linkedin_url: 'LinkedIn URL' }[field]}
+                className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+              />
+            ))}
+            <select value={contactForm.empresa_id} onChange={e => { setContactForm(p => ({ ...p, empresa_id: e.target.value })); if (e.target.value !== '__new__') setInlineEmpresa({ name: '', industry: '' }); }} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              <option value="">Empresa (opcional)</option>
+              <option value="__new__">＋ Crear nueva empresa</option>
+              {empresas.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+            {contactForm.empresa_id === '__new__' && (
+              <div className="bg-[var(--color-brand-gray)] rounded-xl p-3 space-y-2 border border-dashed border-gray-300">
+                <p className="text-xs font-medium text-gray-500">Nueva empresa</p>
+                <input value={inlineEmpresa.name} onChange={e => setInlineEmpresa(p => ({ ...p, name: e.target.value }))} placeholder="Nombre de la empresa *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+                <input value={inlineEmpresa.industry} onChange={e => setInlineEmpresa(p => ({ ...p, industry: e.target.value }))} placeholder="Industria" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowNewContact(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600">Cancelar</button>
+              <button onClick={handleSaveContact} disabled={savingContact || !contactForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                {savingContact ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit event modal */}
+      {showEdit && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold text-[var(--color-brand-dark)]">Editar evento</h3>
+              <button onClick={() => setShowEdit(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <input value={eventoForm.name} onChange={e => setEventoForm(p => ({ ...p, name: e.target.value }))} placeholder="Nombre del evento *" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-gray-500 mb-1 block">Fecha inicio</label><input type="date" value={eventoForm.date} onChange={e => setEventoForm(p => ({ ...p, date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+              <div><label className="text-[10px] text-gray-500 mb-1 block">Fecha fin</label><input type="date" value={eventoForm.end_date} onChange={e => setEventoForm(p => ({ ...p, end_date: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-[10px] text-gray-500 mb-1 block">Hora</label><input type="time" value={eventoForm.time} onChange={e => setEventoForm(p => ({ ...p, time: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+              <div><label className="text-[10px] text-gray-500 mb-1 block">Duración (hs)</label><input type="number" min="0.5" step="0.5" value={eventoForm.duration} onChange={e => setEventoForm(p => ({ ...p, duration: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+            </div>
+            <select value={eventoForm.type} onChange={e => setEventoForm(p => ({ ...p, type: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
+              <option value="presencial">Presencial</option>
+              <option value="online">Online</option>
+              <option value="hibrido">Híbrido</option>
+              <option value="otro">Otro</option>
+            </select>
+            <div><label className="text-[10px] text-gray-500 mb-1 block">Meta de contactos</label><input type="number" min="0" value={eventoForm.contactGoal} onChange={e => setEventoForm(p => ({ ...p, contactGoal: e.target.value }))} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <input value={eventoForm.country} onChange={e => setEventoForm(p => ({ ...p, country: e.target.value }))} placeholder="País" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <input value={eventoForm.city} onChange={e => setEventoForm(p => ({ ...p, city: e.target.value }))} placeholder="Ciudad" className="px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            </div>
+            <input value={eventoForm.location} onChange={e => setEventoForm(p => ({ ...p, location: e.target.value }))} placeholder="Lugar / dirección" className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+            <textarea value={eventoForm.details} onChange={e => setEventoForm(p => ({ ...p, details: e.target.value }))} placeholder="Detalles adicionales" rows={3} className="w-full px-3 py-2 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => setShowEdit(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+              <button onClick={handleSaveEvento} disabled={savingEvento || !eventoForm.name.trim()} className="flex-1 px-4 py-2 rounded-xl bg-[var(--color-pirai-500)] text-white text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-50">
+                {savingEvento ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm */}
+      {confirmDel && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <p className="font-semibold text-[var(--color-brand-dark)] mb-2">¿Eliminar evento?</p>
+            <p className="text-sm text-gray-500 mb-4">Se eliminará <strong>{event.name}</strong>. Esta acción no se puede deshacer.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDel(false)} className="flex-1 px-4 py-2 rounded-xl border border-[var(--color-brand-border)] text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancelar</button>
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-50">
+                {deleting ? 'Eliminando...' : 'Eliminar'}
               </button>
             </div>
           </div>
@@ -1477,6 +1565,25 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
           <p className="text-[10px] text-gray-500">Última act.</p>
         </div>
       </div>
+
+      {/* Contextual tips */}
+      {(() => {
+        const tips: string[] = [];
+        if (!contactosEmpresa.length) tips.push('Agregá 2 contactos clave: alguien decisor y alguien del área.');
+        if (!actividadesEmpresa.length) tips.push('Todavía no hiciste ninguna actividad. Tu mejor siguiente paso es un primer outreach.');
+        else if (actividadesEmpresa.length === 1) tips.push('Solo hay una actividad registrada. Hacé seguimiento antes de dejar enfriar esta cuenta.');
+        else if (!actividadesEmpresa.some(a => a.respuesta)) tips.push('Todavía no hubo respuesta. Probá follow-up con otro ángulo o cambiá de contacto.');
+        if (contactosEmpresa.length > 0 && !actividadesEmpresa.length) tips.push('Ya tenés contactos cargados. Convertí eso en movimiento: mandá mensaje o email.');
+        if (!tips.length && contactosEmpresa.length >= 2 && actividadesEmpresa.length >= 2) tips.push('Bien encaminado: base de contactos y actividad. Ahora cuidá consistencia y seguimiento.');
+        if (!tips.length) return null;
+        return (
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 space-y-1.5">
+            {tips.slice(0, 3).map((tip, i) => (
+              <p key={i} className="text-xs text-amber-800 flex gap-1.5"><span className="shrink-0">💡</span>{tip}</p>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Objetivo */}
       {emp.objetivo && (
@@ -1953,6 +2060,24 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
                 </button>
               </div>
             )}
+          </div>
+        );
+      })()}
+
+      {/* Contextual tips */}
+      {(() => {
+        const tips: string[] = [];
+        if (!empresa) tips.push('Este contacto no está vinculado a una empresa. Conectalo para no perder contexto.');
+        if (!actividadesContacto.length) tips.push('Todavía no registraste ninguna actividad. Tu siguiente paso es iniciar conversación.');
+        else if (actividadesContacto.length === 1) tips.push('Solo hay una interacción registrada. Hacé seguimiento antes de que se enfríe.');
+        else if (!actividadesContacto.some(a => a.respuesta)) tips.push('Todavía no hubo respuesta. Probá otro canal o reformulá el mensaje.');
+        if ((c.stage === 'sin_contactar' || c.stage === 'primer_contacto') && actividadesContacto.length > 0) tips.push('Actualizá la etapa del contacto para que tu pipeline refleje la realidad.');
+        if (!tips.length) return null;
+        return (
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 space-y-1.5">
+            {tips.slice(0, 3).map((tip, i) => (
+              <p key={i} className="text-xs text-amber-800 flex gap-1.5"><span className="shrink-0">💡</span>{tip}</p>
+            ))}
           </div>
         );
       })()}

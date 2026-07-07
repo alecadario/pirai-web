@@ -159,6 +159,16 @@ export default function PerfilPage() {
               className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
             />
           </Field>
+
+          <Field label={isBiz ? '¿Cómo es tu día ideal de trabajo?' : '¿Cómo es tu día ideal de trabajo?'}>
+            <textarea
+              value={profile.ideal_day}
+              onChange={e => setProfile(p => ({ ...p, ideal_day: e.target.value }))}
+              placeholder="Ej: Trabajo remoto, horario flexible, enfocado en proyectos creativos..."
+              rows={3}
+              className="w-full border border-[var(--color-brand-border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none"
+            />
+          </Field>
         </div>
 
         {/* Account info */}
