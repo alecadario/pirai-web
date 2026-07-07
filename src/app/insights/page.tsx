@@ -4,9 +4,8 @@ import AppShell from '@/components/layout/AppShell';
 import { useEffect, useState, useCallback } from 'react';
 import { getUserId } from '@/lib/auth';
 import {
-  Loader2, TrendingUp, Activity, Target, Users, BarChart3,
-  Lightbulb, RefreshCw, CheckCircle, Briefcase, MessageSquare,
-  Award, ChevronRight,
+  Loader2, TrendingUp, Target, Users, BarChart3,
+  Lightbulb, RefreshCw, Briefcase, Award, BookOpen, Check, X,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -103,6 +102,16 @@ const TIPO_COLORS: Record<string, string> = {
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
+interface CourseProgress {
+  id: string;
+  course_title: string;
+  platform: string;
+  url: string;
+  tags: string;
+  started_at: string;
+  status: string;
+}
+
 export default function InsightsPage() {
   const userId = getUserId();
   const [bootstrap, setBootstrap] = useState<BootstrapData | null>(null);
@@ -111,17 +120,21 @@ export default function InsightsPage() {
   const [insightError, setInsightError] = useState('');
   const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingCourses, setPendingCourses] = useState<CourseProgress[]>([]);
+  const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const [bsRes, teamRes] = await Promise.all([
+      const [bsRes, teamRes, coursesRes] = await Promise.all([
         fetch(`/api/bootstrap?userId=${userId}`).then(r => r.json()),
         fetch(`/api/team-insights?userId=${userId}`).then(r => r.json()).catch(() => ({ hasTeam: false })),
+        fetch(`/api/course-progress?userId=${userId}`).then(r => r.json()).catch(() => ({ courses: [] })),
       ]);
       setBootstrap(bsRes);
       setTeamData(teamRes);
+      setPendingCourses(coursesRes.courses || []);
 
       // Load daily insight
       generateInsight(userId, bsRes?.profileAnalysis?.chances_pct || 0);
@@ -155,6 +168,22 @@ export default function InsightsPage() {
       setInsightLoading(false);
     }
   }, []);
+
+  const handleCourseUpdate = async (course: CourseProgress, status: 'completed' | 'skipped') => {
+    setCourseUpdating(course.id);
+    try {
+      await fetch('/api/course-progress', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags }),
+      });
+      setPendingCourses(prev => prev.filter(c => c.id !== course.id));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCourseUpdating(null);
+    }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -249,6 +278,48 @@ export default function InsightsPage() {
             </div>
           </div>
         </div>
+
+        {/* Pending courses smart box */}
+        {pendingCourses.length > 0 && (
+          <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+                <BookOpen className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--color-brand-dark)]">¿Cómo vas con tus recursos?</p>
+                <p className="text-xs text-[var(--color-brand-muted)]">Marcá los que completaste para que actualicemos tus skills</p>
+              </div>
+            </div>
+            <div className="space-y-2.5">
+              {pendingCourses.map(course => (
+                <div key={course.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--color-brand-dark)] truncate">{course.course_title}</p>
+                    <p className="text-xs text-[var(--color-brand-muted)]">{course.platform} · abierto {formatDaysAgo(course.started_at)}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => handleCourseUpdate(course, 'completed')}
+                      disabled={courseUpdating === course.id}
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-[var(--color-pirai-500)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--color-pirai-600)] disabled:opacity-50 transition-colors"
+                    >
+                      {courseUpdating === course.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      Lo completé
+                    </button>
+                    <button
+                      onClick={() => handleCourseUpdate(course, 'skipped')}
+                      disabled={courseUpdating === course.id}
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                    >
+                      <X className="w-3 h-3" /> No lo hice
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Main KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -430,6 +501,14 @@ export default function InsightsPage() {
       </div>
     </AppShell>
   );
+}
+
+function formatDaysAgo(dateStr: string): string {
+  if (!dateStr) return '';
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+  if (days === 0) return 'hoy';
+  if (days === 1) return 'ayer';
+  return `hace ${days} días`;
 }
 
 // ─── Small components ─────────────────────────────────────────────────────

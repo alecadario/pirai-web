@@ -525,6 +525,20 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
                   const isCurated = !!curated?.url;
                   return (
                     <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                      onClick={() => {
+                        if (!userId) return;
+                        fetch('/api/course-progress', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            userId,
+                            course_title: curated?.title || c.title,
+                            platform: c.platform,
+                            url: href,
+                            tags: curated?.tags?.join(', ') || '',
+                          }),
+                        }).catch(() => {});
+                      }}
                       className="block bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl px-3 py-2.5 hover:bg-[var(--color-pirai-100)] transition-colors group">
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-xs font-semibold text-[var(--color-pirai-800)] group-hover:underline">
