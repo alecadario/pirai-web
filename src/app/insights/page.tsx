@@ -108,6 +108,7 @@ export default function InsightsPage() {
   const [bootstrap, setBootstrap] = useState<BootstrapData | null>(null);
   const [insight, setInsight] = useState<DailyInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState('');
   const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -122,26 +123,38 @@ export default function InsightsPage() {
       setBootstrap(bsRes);
       setTeamData(teamRes);
 
-      // Load daily insight (GET = cached, POST = generate)
-      setInsightLoading(true);
-      const cached = await fetch(`/api/daily-insight?userId=${userId}`).then(r => r.json());
-      if (cached?.insight) {
-        setInsight(cached.insight);
-        setInsightLoading(false);
-      } else {
-        // Generate new
-        const gen = await fetch('/api/daily-insight', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, marcaPct: bsRes?.profileAnalysis?.chances_pct || 0 }),
-        }).then(r => r.json());
-        if (gen?.insight) setInsight(gen.insight);
-        setInsightLoading(false);
-      }
+      // Load daily insight
+      generateInsight(userId, bsRes?.profileAnalysis?.chances_pct || 0);
     } finally {
       setLoading(false);
     }
   }, [userId]);
+
+  const generateInsight = useCallback(async (uid: string, marcaPct: number) => {
+    setInsightLoading(true);
+    setInsightError('');
+    try {
+      // 1. Check cache
+      const cached = await fetch(`/api/daily-insight?userId=${uid}`).then(r => r.json());
+      if (cached?.insight) { setInsight(cached.insight); return; }
+      // 2. Generate
+      const res = await fetch('/api/daily-insight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: uid, marcaPct }),
+      });
+      const gen = await res.json();
+      if (gen?.insight) {
+        setInsight(gen.insight);
+      } else {
+        setInsightError(gen?.error || 'No se pudo generar el tip');
+      }
+    } catch (e) {
+      setInsightError('Error de red al generar el tip');
+    } finally {
+      setInsightLoading(false);
+    }
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -215,8 +228,23 @@ export default function InsightsPage() {
                     </span>
                   )}
                 </>
+              ) : insightError ? (
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-red-500">{insightError}</p>
+                  <button
+                    onClick={() => userId && generateInsight(userId, 0)}
+                    className="text-xs font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-pirai-100)] flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Reintentar
+                  </button>
+                </div>
               ) : (
-                <p className="text-sm text-[var(--color-brand-muted)]">Sin tip disponible por el momento.</p>
+                <button
+                  onClick={() => userId && generateInsight(userId, 0)}
+                  className="text-sm font-semibold text-[var(--color-pirai-600)] bg-[var(--color-pirai-50)] px-4 py-2 rounded-lg hover:bg-[var(--color-pirai-100)] flex items-center gap-2"
+                >
+                  <Lightbulb className="w-4 h-4" /> Generar tip del día
+                </button>
               )}
             </div>
           </div>
