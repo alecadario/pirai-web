@@ -281,8 +281,10 @@ export default function DashboardPage() {
   const [suggestedCompanies, setSuggestedCompanies] = useState<SuggestedCompany[]>([]);
   const [suggestedLoading, setSuggestedLoading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [pendingCourses, setPendingCourses] = useState<CourseProgress[]>([]);
+  const [allCourses, setAllCourses] = useState<CourseProgress[]>([]);
+  const [clickedCourseTitles, setClickedCourseTitles] = useState<Set<string>>(new Set());
   const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
+  const [courseRecs, setCourseRecs] = useState<Array<{ title: string; platform: string; reason: string; url?: string }>>([]);
 
   const userId = getUserId();
   const name = getUserName()?.split(' ')[0] ?? '';
@@ -361,7 +363,20 @@ export default function DashboardPage() {
     if (userId) {
       fetch(`/api/course-progress?userId=${userId}`)
         .then(r => r.json())
-        .then(d => setPendingCourses((d.courses || []).filter((c: CourseProgress) => c.status === 'started')))
+        .then(d => {
+          const all = d.courses || [];
+          setAllCourses(all);
+          setClickedCourseTitles(new Set(all.map((c: CourseProgress) => c.course_title.toLowerCase())));
+        })
+        .catch(() => {});
+      fetch(`/api/user-record?userId=${userId}`)
+        .then(r => r.json())
+        .then(d => {
+          const analysis = d.record?.fields?.profile_analysis;
+          if (analysis) {
+            try { setCourseRecs(JSON.parse(analysis)?.course_recommendations || []); } catch { /* */ }
+          }
+        })
         .catch(() => {});
     }
   }, [loadData, loadInsight, userId]);
@@ -375,8 +390,22 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags }),
       });
-      setPendingCourses(prev => prev.filter(c => c.id !== course.id));
+      setAllCourses(prev => prev.map(c => c.id === course.id ? { ...c, status } : c));
     } catch { /* silent */ } finally { setCourseUpdating(null); }
+  };
+
+  const handleCourseClick = async (title: string, platform: string, url: string, tags: string) => {
+    setClickedCourseTitles(prev => new Set([...prev, title.toLowerCase()]));
+    window.open(url, '_blank', 'noopener,noreferrer');
+    try {
+      await fetch('/api/course-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, course_title: title, platform, url, tags }),
+      });
+      const d = await fetch(`/api/course-progress?userId=${userId}`).then(r => r.json());
+      setAllCourses(d.courses || []);
+    } catch { /* silent */ }
   };
 
   const isBizUser = ['emprendedor', 'freelancer', 'empresa'].includes(profileData?.stage ?? '');
@@ -508,41 +537,54 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* CURSOS PENDIENTES */}
-        {pendingCourses.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider mb-4">¿Cómo vas con tus recursos?</h3>
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5 space-y-2.5">
-              <p className="text-xs text-[#718096] mb-3">Marcá los que completaste para que actualicemos tus skills</p>
-              {pendingCourses.map(course => (
-                <div key={course.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                  <BookOpen className="w-4 h-4 text-amber-500 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#2D3748] truncate">{course.course_title}</p>
-                    <p className="text-xs text-[#718096]">{course.platform}</p>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() => handleCourseUpdate(course, 'completed')}
-                      disabled={courseUpdating === course.id}
-                      className="flex items-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white px-3 py-1.5 rounded-lg hover:bg-[#008a58] disabled:opacity-50 transition-colors"
-                    >
-                      {courseUpdating === course.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                      Lo completé
-                    </button>
-                    <button
-                      onClick={() => handleCourseUpdate(course, 'skipped')}
-                      disabled={courseUpdating === course.id}
-                      className="flex items-center gap-1.5 text-xs font-semibold bg-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
-                    >
-                      <X className="w-3 h-3" /> No lo hice
-                    </button>
+        {/* RECURSO DEL DÍA / CHECK-IN */}
+        {(() => {
+          const pendingCourse = allCourses.find(c => c.status === 'started');
+          const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
+
+          if (pendingCourse) {
+            return (
+              <div className="bg-white rounded-2xl border border-amber-200 p-5">
+                <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-3">¿Cómo vas con esto?</h3>
+                <div className="flex items-start gap-3 mb-4">
+                  <BookOpen className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-[#2D3748]">{pendingCourse.course_title}</p>
+                    <p className="text-xs text-[#718096]">{pendingCourse.platform}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+                <div className="flex gap-2">
+                  <button onClick={() => handleCourseUpdate(pendingCourse, 'completed')} disabled={courseUpdating === pendingCourse.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white py-2 rounded-xl hover:bg-[#008a58] disabled:opacity-50 transition-colors">
+                    {courseUpdating === pendingCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Lo completé
+                  </button>
+                  <button onClick={() => handleCourseUpdate(pendingCourse, 'skipped')} disabled={courseUpdating === pendingCourse.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-gray-100 text-gray-600 py-2 rounded-xl hover:bg-gray-200 disabled:opacity-50 transition-colors">
+                    <X className="w-3 h-3" /> No lo hice
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          if (nextRec) {
+            const href = `https://www.google.com/search?q=${encodeURIComponent(nextRec.title)}+${encodeURIComponent(nextRec.platform)}+curso`;
+            return (
+              <div className="bg-[#f0fdf8] rounded-2xl border border-[#b3e8d8] p-5">
+                <h3 className="text-xs font-semibold text-[#00A86B] uppercase tracking-wider mb-3">📚 Recurso del día</h3>
+                <p className="text-sm font-semibold text-[#2D3748] mb-0.5">{nextRec.title}</p>
+                <p className="text-xs text-[#718096] mb-1">{nextRec.platform}</p>
+                {nextRec.reason && <p className="text-xs text-gray-500 mb-3">{nextRec.reason}</p>}
+                <button onClick={() => handleCourseClick(nextRec.title, nextRec.platform, href, '')}
+                  className="w-full flex items-center justify-center gap-2 text-xs font-semibold bg-[#00A86B] text-white py-2.5 rounded-xl hover:bg-[#008a58] transition-colors">
+                  <BookOpen className="w-3.5 h-3.5" /> Abrir recurso
+                </button>
+              </div>
+            );
+          }
+
+          return null;
+        })()}
 
         {/* EMPRESAS SUGERIDAS */}
         <div>
