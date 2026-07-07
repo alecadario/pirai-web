@@ -31,12 +31,30 @@ interface ProfileAnalysis {
   analyzed_at?: string;
 }
 
+interface CuratedCourse {
+  id: string;
+  title: string;
+  platform: string;
+  url: string;
+  description: string;
+  tags: string[];
+  language: string;
+  free: boolean;
+}
+
 export default function MarcaPage() {
   const [tab, setTab] = useState<Tab>('perfil');
   const userId = getUserId();
   const [sharedProfile, setSharedProfile] = useState<ProfileData>({});
   const [sharedCvText, setSharedCvText] = useState('');
   const [sharedPhoto, setSharedPhoto] = useState<string | null>(null);
+  const [curatedCourses, setCuratedCourses] = useState<CuratedCourse[]>([]);
+
+  useEffect(() => {
+    fetch('/api/courses').then(r => r.json()).then(d => {
+      if (d.courses) setCuratedCourses(d.courses);
+    }).catch(() => {});
+  }, []);
 
   const TABS = [
     { id: 'perfil' as Tab, label: 'Mi Perfil', icon: User },
@@ -77,6 +95,7 @@ export default function MarcaPage() {
               setSharedCvText={setSharedCvText}
               sharedPhoto={sharedPhoto}
               setSharedPhoto={setSharedPhoto}
+              curatedCourses={curatedCourses}
             />
           )}
           {tab === 'cv' && (
@@ -93,23 +112,41 @@ export default function MarcaPage() {
   );
 }
 
-function getCourseUrl(title: string, platform: string): string {
+function getPlatformSearchUrl(title: string, platform: string): string {
   const q = encodeURIComponent(title);
   const p = platform.toLowerCase();
   if (p.includes('youtube')) return `https://www.youtube.com/results?search_query=${q}`;
   if (p.includes('coursera')) return `https://www.coursera.org/search?query=${q}`;
   if (p.includes('udemy')) return `https://www.udemy.com/courses/search/?q=${q}`;
-  if (p.includes('edx') || p.includes('edX')) return `https://www.edx.org/search?q=${q}`;
+  if (p.includes('edx')) return `https://www.edx.org/search?q=${q}`;
   if (p.includes('linkedin')) return `https://www.linkedin.com/learning/search?keywords=${q}`;
   if (p.includes('platzi')) return `https://platzi.com/buscar/?q=${q}`;
   if (p.includes('domestika')) return `https://www.domestika.org/es/search?query=${q}`;
   if (p.includes('hubspot')) return `https://academy.hubspot.com/search#q=${q}`;
   if (p.includes('google')) return `https://skillshop.withgoogle.com/catalog?q=${q}`;
-  // Fallback: Google search
   return `https://www.google.com/search?q=${q}+${encodeURIComponent(platform)}+curso`;
 }
 
-function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto }: {
+function matchCuratedCourse(title: string, platform: string, curated: CuratedCourse[]): CuratedCourse | null {
+  if (!curated.length) return null;
+  const tLow = title.toLowerCase();
+  const pLow = platform.toLowerCase();
+  // Exact or close title match on same platform
+  const exact = curated.find(c =>
+    c.title.toLowerCase() === tLow && c.platform.toLowerCase().includes(pLow.split(' ')[0])
+  );
+  if (exact) return exact;
+  // Partial title match (>= 60% words overlap)
+  const words = tLow.split(/\s+/).filter(w => w.length > 3);
+  const best = curated.find(c => {
+    const cWords = c.title.toLowerCase();
+    const matches = words.filter(w => cWords.includes(w)).length;
+    return matches >= Math.ceil(words.length * 0.6);
+  });
+  return best || null;
+}
+
+function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto, curatedCourses }: {
   userId: string | null;
   sharedProfile: ProfileData;
   setSharedProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
@@ -117,6 +154,7 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
   setSharedCvText: React.Dispatch<React.SetStateAction<string>>;
   sharedPhoto: string | null;
   setSharedPhoto: React.Dispatch<React.SetStateAction<string | null>>;
+  curatedCourses: CuratedCourse[];
 }) {
   const profileData = sharedProfile;
   const setProfileData = setSharedProfile;
@@ -481,16 +519,34 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
             <div>
               <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Recomendaciones para crecer</p>
               <div className="space-y-2">
-                {profileAnalysis.course_recommendations.map((c, i) => (
-                  <a key={i} href={getCourseUrl(c.title, c.platform)} target="_blank" rel="noopener noreferrer"
-                    className="block bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl px-3 py-2.5 hover:bg-[var(--color-pirai-100)] transition-colors group">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-semibold text-[var(--color-pirai-800)] group-hover:underline">{c.title}</p>
-                      <span className="text-[10px] font-bold bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full shrink-0 group-hover:bg-[var(--color-pirai-200)]">{c.platform}</span>
-                    </div>
-                    <p className="text-[11px] text-[var(--color-pirai-600)] mt-0.5">{c.reason}</p>
-                  </a>
-                ))}
+                {profileAnalysis.course_recommendations.map((c, i) => {
+                  const curated = matchCuratedCourse(c.title, c.platform, curatedCourses);
+                  const href = curated?.url || getPlatformSearchUrl(c.title, c.platform);
+                  const isCurated = !!curated?.url;
+                  return (
+                    <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                      className="block bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl px-3 py-2.5 hover:bg-[var(--color-pirai-100)] transition-colors group">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold text-[var(--color-pirai-800)] group-hover:underline">
+                          {curated?.title || c.title}
+                        </p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {curated?.free && <span className="text-[9px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Gratis</span>}
+                          {isCurated && <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">✓ Curado</span>}
+                          <span className="text-[10px] font-bold bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full">{c.platform}</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-[var(--color-pirai-600)] mt-0.5">{curated?.description || c.reason}</p>
+                      {(curated?.tags?.length ?? 0) > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {curated?.tags.slice(0, 3).map(tag => (
+                            <span key={tag} className="text-[9px] bg-white text-[var(--color-pirai-500)] border border-[var(--color-pirai-200)] px-1.5 py-0.5 rounded-full">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
