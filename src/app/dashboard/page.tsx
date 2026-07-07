@@ -282,6 +282,7 @@ export default function DashboardPage() {
   const [clickedCourseTitles, setClickedCourseTitles] = useState<Set<string>>(new Set());
   const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
   const [courseRecs, setCourseRecs] = useState<Array<{ title: string; platform: string; reason: string; url?: string }>>([]);
+  const [coursesLoaded, setCoursesLoaded] = useState(false);
 
   const userId = getUserId();
   const name = getUserName()?.split(' ')[0] ?? '';
@@ -358,23 +359,19 @@ export default function DashboardPage() {
     loadData();
     loadInsight();
     if (userId) {
-      fetch(`/api/course-progress?userId=${userId}`)
-        .then(r => r.json())
-        .then(d => {
-          const all = d.courses || [];
-          setAllCourses(all);
-          setClickedCourseTitles(new Set(all.map((c: CourseProgress) => c.course_title.toLowerCase())));
-        })
-        .catch(() => {});
-      fetch(`/api/user-record?userId=${userId}`)
-        .then(r => r.json())
-        .then(d => {
-          const analysis = d.record?.fields?.profile_analysis;
-          if (analysis) {
-            try { setCourseRecs(JSON.parse(analysis)?.course_recommendations || []); } catch { /* */ }
-          }
-        })
-        .catch(() => {});
+      Promise.all([
+        fetch(`/api/course-progress?userId=${userId}`).then(r => r.json()).catch(() => ({ courses: [] })),
+        fetch(`/api/user-record?userId=${userId}`).then(r => r.json()).catch(() => ({})),
+      ]).then(([cpData, userData]) => {
+        const all = cpData.courses || [];
+        setAllCourses(all);
+        setClickedCourseTitles(new Set(all.map((c: CourseProgress) => c.course_title.toLowerCase())));
+        const analysis = userData.record?.fields?.profile_analysis;
+        if (analysis) {
+          try { setCourseRecs(JSON.parse(analysis)?.course_recommendations || []); } catch { /* */ }
+        }
+        setCoursesLoaded(true);
+      });
     }
   }, [loadData, loadInsight, userId]);
   useEffect(() => { if (!loading) loadSuggestedCompanies(); }, [loading, loadSuggestedCompanies]);
@@ -515,7 +512,7 @@ export default function DashboardPage() {
               ))}
 
               {/* Recurso del día / check-in — dentro de las acciones */}
-              {(() => {
+              {coursesLoaded && (() => {
                 const pendingCourse = allCourses.find(c => c.status === 'started');
                 if (pendingCourse) {
                   return (
