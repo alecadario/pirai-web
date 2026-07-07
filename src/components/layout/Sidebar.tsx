@@ -20,10 +20,21 @@ function PiraiIcon({ className }: { className?: string }) {
           <stop offset="60%" stopColor="#00A86B" />
           <stop offset="100%" stopColor="#00BCD4" />
         </linearGradient>
+        <mask id="pirai-mask">
+          {/* White = visible, black = cut out */}
+          <rect width="100" height="100" fill="white" />
+          {/* Cut the river out of the P */}
+          <path d="M50 16 C46 28 57 37 53 48 C49 58 38 60 36 72 C34 80 43 84 40 92" stroke="black" strokeWidth="10" strokeLinecap="round" fill="none" />
+        </mask>
       </defs>
+      {/* Green background */}
       <rect width="100" height="100" rx="22" fill="url(#pirai-g)" />
-      <path d="M24 18 L24 82 Q24 86 28 86 L36 86 Q40 86 40 82 L40 64 L56 64 Q76 64 82 50 Q88 36 76 26 Q68 18 52 18 Z M40 30 L52 30 Q64 30 68 40 Q72 50 62 56 Q56 60 48 60 L40 60 Z" fill="white" />
-      <path d="M50 18 C46 28 56 36 52 46 C48 56 38 58 36 68 C34 76 42 80 40 88" stroke="#1A2332" strokeWidth="5.5" strokeLinecap="round" fill="none" />
+      {/* White P shape with river cut out */}
+      <path
+        d="M22 16 L22 84 Q22 88 28 88 L38 88 Q44 88 44 82 L44 64 L56 64 Q78 64 84 50 Q90 34 76 24 Q68 16 52 16 Z M44 28 L52 28 Q66 28 70 40 Q74 52 62 58 Q56 62 48 62 L44 62 Z"
+        fill="white"
+        mask="url(#pirai-mask)"
+      />
     </svg>
   );
 }
