@@ -40,7 +40,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-56 h-full bg-[#1A2332] flex flex-col shrink-0">
+    <aside className="w-56 h-screen sticky top-0 bg-[#1A2332] flex flex-col shrink-0 overflow-hidden">
       {/* Logo */}
       <div className="px-5 py-5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
@@ -50,7 +50,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
