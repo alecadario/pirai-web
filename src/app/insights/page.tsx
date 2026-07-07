@@ -12,9 +12,9 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────
 
 interface BootstrapData {
-  empresas: Array<{ status?: string }>;
-  contactos: Array<{ stage?: string }>;
-  actividades: Array<{ fecha: string; respuesta?: boolean; tipo?: string }>;
+  companies: Array<{ status?: string }>;
+  contacts: Array<{ stage?: string }>;
+  activities: Array<{ fecha: string; respuesta?: boolean; tipo?: string }>;
   userStage?: string;
   profileAnalysis?: { chances_pct?: number };
 }
@@ -153,7 +153,7 @@ export default function InsightsPage() {
     </AppShell>
   );
 
-  const { empresas = [], actividades = [], contactos = [] } = bootstrap ?? {};
+  const { companies: empresas = [], activities: actividades = [], contacts: contactos = [] } = bootstrap ?? {};
 
   // ─── Derived metrics ──────────────────────────────────────────────────
   const now = new Date();
