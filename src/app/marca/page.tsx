@@ -61,6 +61,7 @@ export default function MarcaPage() {
   const [sharedPhoto, setSharedPhoto] = useState<string | null>(null);
   const [curatedCourses, setCuratedCourses] = useState<CuratedCourse[]>([]);
   const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([]);
+  const [clickedCourseTitles, setClickedCourseTitles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/courses').then(r => r.json()).then(d => {
@@ -68,8 +69,10 @@ export default function MarcaPage() {
     }).catch(() => {});
     if (userId) {
       fetch(`/api/course-progress?userId=${userId}`).then(r => r.json()).then(d => {
-        const done = (d.courses || []).filter((c: CompletedCourse & { status: string }) => c.status === 'completed');
+        const all = d.courses || [];
+        const done = all.filter((c: CompletedCourse & { status: string }) => c.status === 'completed');
         setCompletedCourses(done);
+        setClickedCourseTitles(new Set(all.map((c: { course_title: string }) => c.course_title.toLowerCase())));
       }).catch(() => {});
     }
   }, [userId]);
@@ -115,6 +118,8 @@ export default function MarcaPage() {
               setSharedPhoto={setSharedPhoto}
               curatedCourses={curatedCourses}
               completedCourses={completedCourses}
+              clickedCourseTitles={clickedCourseTitles}
+              onCourseClicked={(title) => setClickedCourseTitles(prev => new Set([...prev, title.toLowerCase()]))}
             />
           )}
           {tab === 'cv' && (
@@ -165,7 +170,7 @@ function matchCuratedCourse(title: string, platform: string, curated: CuratedCou
   return best || null;
 }
 
-function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto, curatedCourses, completedCourses }: {
+function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto, curatedCourses, completedCourses, clickedCourseTitles, onCourseClicked }: {
   userId: string | null;
   sharedProfile: ProfileData;
   setSharedProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
@@ -175,6 +180,8 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
   setSharedPhoto: React.Dispatch<React.SetStateAction<string | null>>;
   curatedCourses: CuratedCourse[];
   completedCourses: CompletedCourse[];
+  clickedCourseTitles: Set<string>;
+  onCourseClicked: (title: string) => void;
 }) {
   const profileData = sharedProfile;
   const setProfileData = setSharedProfile;
@@ -588,24 +595,33 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
           )}
 
           {/* Course recommendations */}
-          {profileAnalysis.course_recommendations && profileAnalysis.course_recommendations.length > 0 && (
+          {profileAnalysis.course_recommendations && profileAnalysis.course_recommendations.length > 0 && (() => {
+            const visible = profileAnalysis.course_recommendations.filter(c => {
+              const curated = matchCuratedCourse(c.title, c.platform, curatedCourses);
+              const title = (curated?.title || c.title).toLowerCase();
+              return !clickedCourseTitles.has(title);
+            });
+            if (visible.length === 0) return null;
+            return (
             <div>
               <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Recomendaciones para crecer</p>
               <div className="space-y-2">
-                {profileAnalysis.course_recommendations.map((c, i) => {
+                {visible.map((c, i) => {
                   const curated = matchCuratedCourse(c.title, c.platform, curatedCourses);
                   const href = curated?.url || getPlatformSearchUrl(c.title, c.platform);
                   const isCurated = !!curated?.url;
+                  const courseTitle = curated?.title || c.title;
                   return (
                     <a key={i} href={href} target="_blank" rel="noopener noreferrer"
                       onClick={() => {
                         if (!userId) return;
+                        onCourseClicked(courseTitle);
                         fetch('/api/course-progress', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             userId,
-                            course_title: curated?.title || c.title,
+                            course_title: courseTitle,
                             platform: c.platform,
                             url: href,
                             tags: curated?.tags?.join(', ') || '',
@@ -637,7 +653,8 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
                 })}
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* Re-analyze */}
           <button
