@@ -3,7 +3,7 @@
 import AppShell from '@/components/layout/AppShell';
 import { useState, useEffect } from 'react';
 import { getUserId } from '@/lib/auth';
-import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X, Mail, Send } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X, Mail, Send, Award } from 'lucide-react';
 import { generateCvPDF, cropImageToCircle } from '@/lib/pdf';
 
 
@@ -16,6 +16,7 @@ interface ProfileData {
   passion?: string;
   impact?: string;
   services_description?: string;
+  skills?: string;
 }
 
 interface ProfileAnalysis {
@@ -193,6 +194,7 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
           passion: f.passion || answers.passion,
           impact: f.impact || answers.impact,
           services_description: f.services_description || answers.services_description,
+          skills: f.skills || '',
         });
 
         if (f.cv_text) setCvText(f.cv_text);
@@ -425,6 +427,22 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
           </div>
         </div>
       </div>
+
+      {/* Skills acumuladas de cursos */}
+      {profileData.skills && (
+        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
+            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Skills adquiridas</p>
+            <span className="text-[10px] bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full font-semibold ml-auto">De cursos completados</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {profileData.skills.split(',').filter(s => s.trim()).map((skill, i) => (
+              <span key={i} className="text-xs bg-[var(--color-pirai-100)] text-[var(--color-pirai-700)] px-2.5 py-1 rounded-full font-medium">{skill.trim()}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Lo que sabemos */}
       {profileAnalysis?.lo_que_sabemos && (

@@ -109,6 +109,7 @@ interface CourseProgress {
   url: string;
   tags: string;
   started_at: string;
+  completed_at: string;
   status: string;
 }
 
@@ -120,7 +121,7 @@ export default function InsightsPage() {
   const [insightError, setInsightError] = useState('');
   const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pendingCourses, setPendingCourses] = useState<CourseProgress[]>([]);
+  const [allCourses, setAllCourses] = useState<CourseProgress[]>([]);
   const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -134,7 +135,7 @@ export default function InsightsPage() {
       ]);
       setBootstrap(bsRes);
       setTeamData(teamRes);
-      setPendingCourses(coursesRes.courses || []);
+      setAllCourses(coursesRes.courses || []);
 
       // Load daily insight
       generateInsight(userId, bsRes?.profileAnalysis?.chances_pct || 0);
@@ -177,7 +178,7 @@ export default function InsightsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags }),
       });
-      setPendingCourses(prev => prev.filter(c => c.id !== course.id));
+      setAllCourses(prev => prev.map(c => c.id === course.id ? { ...c, status, completed_at: status === 'completed' ? new Date().toISOString() : c.completed_at } : c));
     } catch (e) {
       console.error(e);
     } finally {
@@ -196,6 +197,9 @@ export default function InsightsPage() {
   );
 
   const { companies: empresas = [], activities: actividades = [], contacts: contactos = [] } = bootstrap ?? {};
+
+  const pendingCourses = allCourses.filter(c => c.status === 'started');
+  const completedCourses = allCourses.filter(c => c.status === 'completed');
 
   // ─── Derived metrics ──────────────────────────────────────────────────
   const now = new Date();
@@ -314,6 +318,42 @@ export default function InsightsPage() {
                     >
                       <X className="w-3 h-3" /> No lo hice
                     </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Completed courses dashboard */}
+        {completedCourses.length > 0 && (
+          <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-xl bg-[var(--color-pirai-100)] flex items-center justify-center">
+                <Award className="w-4 h-4 text-[var(--color-pirai-600)]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Recursos completados</p>
+                <p className="text-xs text-[var(--color-brand-muted)]">{completedCourses.length} {completedCourses.length === 1 ? 'recurso completado' : 'recursos completados'}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {completedCourses.map(course => (
+                <div key={course.id} className="flex items-center gap-3 bg-[var(--color-pirai-50)] rounded-xl px-4 py-3">
+                  <Check className="w-4 h-4 text-[var(--color-pirai-500)] shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--color-brand-dark)] truncate">{course.course_title}</p>
+                    <p className="text-xs text-[var(--color-brand-muted)]">
+                      {course.platform}
+                      {course.completed_at && ` · completado ${formatDaysAgo(course.completed_at)}`}
+                    </p>
+                    {course.tags && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {course.tags.split(',').slice(0, 3).map(tag => (
+                          <span key={tag} className="text-[9px] bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-1.5 py-0.5 rounded-full">{tag.trim()}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
