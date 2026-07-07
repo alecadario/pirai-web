@@ -212,9 +212,6 @@ function getDailyFocus(
     }
   }
 
-  // APRENDÉ
-  actions.push({ label: 'Mejorá tu marca personal', icon: 'Sparkles', action: 'go_marca', tag: 'aprendé' });
-
   // Gradient & title
   let gradient = 'from-pirai-600 to-pirai-600';
   let title = 'Tu plan de hoy';
