@@ -11,6 +11,23 @@ import { useState, useEffect } from 'react';
 import { fetchQuota, PLAN_META } from '@/lib/quota';
 import { getUserId } from '@/lib/auth';
 
+function PiraiIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="pirai-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#2ECC71" />
+          <stop offset="60%" stopColor="#00A86B" />
+          <stop offset="100%" stopColor="#00BCD4" />
+        </linearGradient>
+      </defs>
+      <rect width="100" height="100" rx="22" fill="url(#pirai-g)" />
+      <path d="M24 18 L24 82 Q24 86 28 86 L36 86 Q40 86 40 82 L40 64 L56 64 Q76 64 82 50 Q88 36 76 26 Q68 18 52 18 Z M40 30 L52 30 Q64 30 68 40 Q72 50 62 56 Q56 60 48 60 L40 60 Z" fill="white" />
+      <path d="M50 18 C46 28 56 36 52 46 C48 56 38 58 36 68 C34 76 42 80 40 88" stroke="#1A2332" strokeWidth="5.5" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
 const NAV = [
   { href: '/dashboard', label: 'Tu Día', icon: LayoutDashboard },
   { href: '/crm', label: 'CRM', icon: Users },
@@ -43,7 +60,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 py-5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <img src="/pirai-logo.svg" alt="Piraí" className="w-8 h-8 shrink-0" />
+          <PiraiIcon className="w-8 h-8 shrink-0" />
           <span className="text-white font-bold text-lg">Piraí</span>
         </div>
       </div>
