@@ -23,45 +23,6 @@ interface DailyInsight {
   tipo: string;
 }
 
-interface MemberStat {
-  userId: string;
-  name: string;
-  role: string;
-  totalActividades: number;
-  actividadesSemana: number;
-  respuestas: number;
-  entrevistas: number;
-  empresas: number;
-  contactos: number;
-  dealsActivos: number;
-  dealsGanados: number;
-  totalGanado: number;
-  tasaRespuesta: number;
-  lastActivity: string | null;
-}
-
-interface TeamData {
-  hasTeam: boolean;
-  isAdmin?: boolean;
-  teamName?: string;
-  memberCount?: number;
-  members?: MemberStat[];
-  totals?: {
-    actividades: number;
-    respuestas: number;
-    tasaRespuesta: number;
-    entrevistas: number;
-    empresas: number;
-    contactos: number;
-    deals: number;
-    dealsGanados: number;
-    totalGanado: number;
-    winRate: number;
-    pipeline: Record<string, number>;
-  };
-  last7?: Array<{ day: string; count: number; date: string }>;
-}
-
 // ─── Labels ───────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
@@ -119,7 +80,6 @@ export default function InsightsPage() {
   const [insight, setInsight] = useState<DailyInsight | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [insightError, setInsightError] = useState('');
-  const [teamData, setTeamData] = useState<TeamData | null>(null);
   const [loading, setLoading] = useState(true);
   const [allCourses, setAllCourses] = useState<CourseProgress[]>([]);
 
@@ -127,13 +87,11 @@ export default function InsightsPage() {
     if (!userId) return;
     setLoading(true);
     try {
-      const [bsRes, teamRes, coursesRes] = await Promise.all([
+      const [bsRes, coursesRes] = await Promise.all([
         fetch(`/api/bootstrap?userId=${userId}`).then(r => r.json()),
-        fetch(`/api/team-insights?userId=${userId}`).then(r => r.json()).catch(() => ({ hasTeam: false })),
         fetch(`/api/course-progress?userId=${userId}`).then(r => r.json()).catch(() => ({ courses: [] })),
       ]);
       setBootstrap(bsRes);
-      setTeamData(teamRes);
       setAllCourses(coursesRes.courses || []);
 
       // Load daily insight
@@ -399,96 +357,6 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        {/* Team insights (admin only) */}
-        {teamData?.hasTeam && teamData?.isAdmin && teamData.members && (
-          <div className="bg-white rounded-2xl border border-[var(--color-brand-border)] p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-[var(--color-pirai-500)]" />
-                <h2 className="font-semibold text-sm text-[var(--color-brand-dark)]">{teamData.teamName || 'Mi equipo'}</h2>
-                <span className="text-xs bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full font-semibold">{teamData.memberCount} miembros</span>
-              </div>
-            </div>
-
-            {/* Team totals */}
-            {teamData.totals && (
-              <div className="grid grid-cols-4 gap-3">
-                <MiniKPI label="Actividades" value={teamData.totals.actividades} />
-                <MiniKPI label="Tasa respuesta" value={`${teamData.totals.tasaRespuesta}%`} />
-                <MiniKPI label="Entrevistas" value={teamData.totals.entrevistas} />
-                <MiniKPI label="Win rate" value={`${teamData.totals.winRate}%`} />
-              </div>
-            )}
-
-            {/* Member table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-[var(--color-brand-muted)] border-b border-[var(--color-brand-border)]">
-                    <th className="text-left py-2 font-semibold">Miembro</th>
-                    <th className="text-center py-2 font-semibold">Actividades</th>
-                    <th className="text-center py-2 font-semibold">Esta semana</th>
-                    <th className="text-center py-2 font-semibold">Respuestas</th>
-                    <th className="text-center py-2 font-semibold">Entrevistas</th>
-                    <th className="text-center py-2 font-semibold">Empresas</th>
-                    <th className="text-right py-2 font-semibold">Última act.</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {teamData.members.map(m => (
-                    <tr key={m.userId} className="hover:bg-gray-50">
-                      <td className="py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-[var(--color-pirai-100)] flex items-center justify-center text-[var(--color-pirai-600)] font-bold text-[10px]">
-                            {m.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="font-medium text-[var(--color-brand-dark)]">{m.name}</span>
-                          {m.role === 'admin' && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">admin</span>}
-                        </div>
-                      </td>
-                      <td className="text-center py-2.5 font-semibold text-[var(--color-brand-dark)]">{m.totalActividades}</td>
-                      <td className="text-center py-2.5">
-                        <span className={`font-semibold ${m.actividadesSemana > 0 ? 'text-[var(--color-pirai-600)]' : 'text-gray-300'}`}>{m.actividadesSemana}</span>
-                      </td>
-                      <td className="text-center py-2.5">
-                        <span className="font-semibold text-[var(--color-turquesa-600)]">{m.respuestas}</span>
-                        <span className="text-[var(--color-brand-muted)]"> ({m.tasaRespuesta}%)</span>
-                      </td>
-                      <td className="text-center py-2.5 font-semibold text-amber-600">{m.entrevistas}</td>
-                      <td className="text-center py-2.5 text-[var(--color-brand-dark)]">{m.empresas}</td>
-                      <td className="text-right py-2.5 text-[var(--color-brand-muted)]">
-                        {m.lastActivity ? m.lastActivity : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Team last7 bar chart */}
-            {teamData.last7 && (
-              <div>
-                <p className="text-xs font-semibold text-[var(--color-brand-muted)] mb-3">Actividad del equipo (7 días)</p>
-                <div className="flex items-end gap-2 h-16">
-                  {teamData.last7.map(({ day, count }) => {
-                    const mx = Math.max(...(teamData.last7 ?? []).map(d => d.count), 1);
-                    return (
-                      <div key={day} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full flex items-end justify-center" style={{ height: 48 }}>
-                          <div
-                            className="w-full rounded-t-lg bg-[var(--color-pirai-400)] transition-all"
-                            style={{ height: `${Math.max(3, (count / mx) * 48)}px`, opacity: count === 0 ? 0.2 : 1 }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-[var(--color-brand-muted)]">{day}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </AppShell>
   );

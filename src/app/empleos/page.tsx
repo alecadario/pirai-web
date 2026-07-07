@@ -93,7 +93,7 @@ export default function EmpleosPage() {
     if (!userId) return;
     setLoadingPostulaciones(true);
     try {
-      const res = await fetch(`${BASE}/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=&stage=`).then(r => r.json());
+      const res = await fetch(`/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=&stage=`).then(r => r.json());
       const acts: Array<{ id: string; tipo: string; notas?: string; fecha?: string; respuesta?: boolean; empresaId?: string; empresaNombre?: string }> = res.activities ?? [];
       const postuls = acts
         .filter(a => a.tipo === 'postulacion')
@@ -119,7 +119,7 @@ export default function EmpleosPage() {
     try {
       const today = new Date().toISOString().split('T')[0];
       // Create or find company
-      const empresaRes = await fetch(`${BASE}/api/crm/empresa`, {
+      const empresaRes = await fetch(`/api/crm/empresa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -133,7 +133,7 @@ export default function EmpleosPage() {
       }).then(r => r.json());
       const companyId = empresaRes.id ?? empresaRes.empresa?.id ?? null;
 
-      await fetch(`${BASE}/api/activities`, {
+      await fetch(`/api/activities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

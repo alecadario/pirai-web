@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearAuth, getUserName, getUserEmail } from '@/lib/auth';
 import {
@@ -43,9 +44,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 py-5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[var(--color-pirai-500)] flex items-center justify-center">
-            <span className="text-white font-bold text-sm">P</span>
-          </div>
+          <Image src="/pirai-icon.png" alt="Piraí" width={32} height={32} className="w-8 h-8 shrink-0 rounded-xl" />
           <span className="text-white font-bold text-lg">Piraí</span>
         </div>
       </div>

@@ -12,6 +12,11 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: 'Piraí — Tu copiloto de carrera',
   description: 'Gestioná tu búsqueda de trabajo, CRM y marca personal desde un solo lugar.',
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
