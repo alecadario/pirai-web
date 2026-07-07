@@ -31,9 +31,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!ready) return null;
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-brand-surface)]">
+    <div className="flex h-screen overflow-hidden bg-[var(--color-brand-surface)]">
       <Sidebar />
-      <main className="flex-1 overflow-auto min-h-screen">{children}</main>
+      <main className="flex-1 overflow-auto">{children}</main>
     </div>
   );
 }
