@@ -43,9 +43,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 py-5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[var(--color-pirai-500)] flex items-center justify-center">
-            <span className="text-white font-bold text-sm">P</span>
-          </div>
+          <img src="/pirai-logo.svg" alt="Piraí" className="w-8 h-8 shrink-0" />
           <span className="text-white font-bold text-lg">Piraí</span>
         </div>
       </div>
