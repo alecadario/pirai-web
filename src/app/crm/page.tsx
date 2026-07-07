@@ -198,7 +198,7 @@ function CRMPageInner() {
       let diagnosis = '';
       let stage = '';
       try {
-        const ur = await fetch(`${BASE}/api/user-record?userId=${encodeURIComponent(userId)}`).then(r => r.json());
+        const ur = await fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`).then(r => r.json());
         const fields = ur?.record?.fields ?? {};
         if (fields.name) setUserName(fields.name);
         else if (fields.full_name) setUserName(fields.full_name);
@@ -211,7 +211,7 @@ function CRMPageInner() {
         }
       } catch {}
       const res = await fetch(
-        `${BASE}/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=${encodeURIComponent(diagnosis)}&stage=${encodeURIComponent(stage)}`
+        `/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=${encodeURIComponent(diagnosis)}&stage=${encodeURIComponent(stage)}`
       ).then(r => r.json());
       setEmpresas(res.companies ?? []);
       setContactos(res.contacts ?? []);
@@ -301,7 +301,7 @@ function CRMPageInner() {
     if (!newEmpresaForm.name.trim()) return;
     setSavingNew(true);
     try {
-      const res = await fetch(`${BASE}/api/crm/empresa`, {
+      const res = await fetch(`/api/crm/empresa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, ...newEmpresaForm }),
@@ -321,12 +321,12 @@ function CRMPageInner() {
       let empresaId = newContactoForm.empresa_id;
       if (empresaId === '__new__') {
         if (!inlineEmpresa.name.trim()) { alert('Escribí el nombre de la empresa'); setSavingNew(false); return; }
-        const er = await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresa.name, industry: inlineEmpresa.industry, priority: 'media', status: 'investigando' }) });
+        const er = await fetch(`/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresa.name, industry: inlineEmpresa.industry, priority: 'media', status: 'investigando' }) });
         const ed = await er.json();
         empresaId = ed.id || ed.empresa?.id || '';
         setInlineEmpresa({ name: '', industry: '' });
       }
-      const res = await fetch(`${BASE}/api/crm/contacto`, {
+      const res = await fetch(`/api/crm/contacto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, name: newContactoForm.name, title: newContactoForm.title, email: newContactoForm.email, phone: newContactoForm.phone, linkedinUrl: newContactoForm.linkedin_url, stage: newContactoForm.stage, empresaId, language: newContactoForm.language }),
@@ -573,7 +573,7 @@ function CRMPageInner() {
                     const obj: Record<string, string> = {};
                     headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
                     if (!obj.name) continue;
-                    await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: obj.name, industry: obj.industry, website: obj.website, country: obj.country, city: obj.city, priority: obj.priority || 'media', status: obj.status || 'investigando', objetivo: obj.objetivo }) }).catch(() => {});
+                    await fetch(`/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: obj.name, industry: obj.industry, website: obj.website, country: obj.country, city: obj.city, priority: obj.priority || 'media', status: obj.status || 'investigando', objetivo: obj.objetivo }) }).catch(() => {});
                   }
                   setSavingNew(false);
                   setShowNewEmpresa(false);
@@ -638,7 +638,7 @@ function CRMPageInner() {
                     const obj: Record<string, string> = {};
                     headers.forEach((h, i) => { obj[h] = vals[i] ?? ''; });
                     if (!obj.name) continue;
-                    await fetch(`${BASE}/api/crm/contacto`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: obj.name, title: obj.title, email: obj.email, phone: obj.phone, linkedinUrl: obj.linkedin_url, stage: obj.stage || 'sin_contactar', language: obj.language || 'es' }) }).catch(() => {});
+                    await fetch(`/api/crm/contacto`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: obj.name, title: obj.title, email: obj.email, phone: obj.phone, linkedinUrl: obj.linkedin_url, stage: obj.stage || 'sin_contactar', language: obj.language || 'es' }) }).catch(() => {});
                   }
                   setSavingNew(false);
                   setShowNewContacto(false);
@@ -779,12 +779,12 @@ function EventosPanel({ eventos, contactos, actividades, empresas, eventFilter, 
       let empresaId = newContactForm.empresa_id;
       if (empresaId === '__new__') {
         if (!inlineEmpresaContact.name.trim()) { alert('Escribí el nombre de la empresa'); setSavingContact(false); return; }
-        const er = await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresaContact.name, industry: inlineEmpresaContact.industry, priority: 'media', status: 'investigando' }) });
+        const er = await fetch(`/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresaContact.name, industry: inlineEmpresaContact.industry, priority: 'media', status: 'investigando' }) });
         const ed = await er.json();
         empresaId = ed.id || ed.empresa?.id || '';
         setInlineEmpresaContact({ name: '', industry: '' });
       }
-      await fetch(`${BASE}/api/crm/contacto`, {
+      await fetch(`/api/crm/contacto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -809,7 +809,7 @@ function EventosPanel({ eventos, contactos, actividades, empresas, eventFilter, 
     if (!confirmDelEvento) return;
     setDeletingEvento(true);
     try {
-      await fetch(`${BASE}/api/events`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, eventId: confirmDelEvento.id }) });
+      await fetch(`/api/events`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, eventId: confirmDelEvento.id }) });
       onDeleteEvento(confirmDelEvento.id);
       setConfirmDelEvento(null);
     } finally { setDeletingEvento(false); }
@@ -820,7 +820,7 @@ function EventosPanel({ eventos, contactos, actividades, empresas, eventFilter, 
     setSavingEvento(true);
     try {
       if (showEditEvento) {
-        await fetch(`${BASE}/api/events`, {
+        await fetch(`/api/events`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ eventId: showEditEvento.id, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }),
@@ -828,7 +828,7 @@ function EventosPanel({ eventos, contactos, actividades, empresas, eventFilter, 
         setShowEditEvento(null);
         onEventAdded();
       } else {
-        await fetch(`${BASE}/api/events`, {
+        await fetch(`/api/events`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }),
@@ -1122,12 +1122,12 @@ function EventoDetail({ event, contactos, empresas, BASE, userId, onClose, onCon
       let empresaId = contactForm.empresa_id;
       if (empresaId === '__new__') {
         if (!inlineEmpresa.name.trim()) { alert('Escribí el nombre de la empresa'); setSavingContact(false); return; }
-        const er = await fetch(`${BASE}/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresa.name, industry: inlineEmpresa.industry, priority: 'media', status: 'investigando' }) });
+        const er = await fetch(`/api/crm/empresa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, name: inlineEmpresa.name, industry: inlineEmpresa.industry, priority: 'media', status: 'investigando' }) });
         const ed = await er.json();
         empresaId = ed.id || ed.empresa?.id || '';
         setInlineEmpresa({ name: '', industry: '' });
       }
-      await fetch(`${BASE}/api/crm/contacto`, {
+      await fetch(`/api/crm/contacto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, name: contactForm.name.trim(), title: contactForm.title.trim(), email: contactForm.email.trim(), phone: contactForm.phone.trim(), linkedinUrl: contactForm.linkedin_url.trim(), stage: 'primer_contacto', eventSource: event.name, empresaId: empresaId || undefined }),
@@ -1142,7 +1142,7 @@ function EventoDetail({ event, contactos, empresas, BASE, userId, onClose, onCon
     if (!eventoForm.name.trim()) return;
     setSavingEvento(true);
     try {
-      await fetch(`${BASE}/api/events`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: event.id, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }) });
+      await fetch(`/api/events`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: event.id, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details }) });
       onEventUpdated({ ...event, name: eventoForm.name, date: eventoForm.date, time: eventoForm.time, duration: parseFloat(eventoForm.duration) || 2, end_date: eventoForm.end_date, type: eventoForm.type, contactGoal: parseInt(eventoForm.contactGoal) || 0, country: eventoForm.country, city: eventoForm.city, location: eventoForm.location, details: eventoForm.details });
       setShowEdit(false);
     } finally { setSavingEvento(false); }
@@ -1151,7 +1151,7 @@ function EventoDetail({ event, contactos, empresas, BASE, userId, onClose, onCon
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await fetch(`${BASE}/api/events`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, eventId: event.id }) });
+      await fetch(`/api/events`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, eventId: event.id }) });
       onEventDeleted(event.id);
     } finally { setDeleting(false); }
   };
@@ -1422,7 +1422,7 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
     setContactSearchDone(false);
     setFoundContacts([]);
     try {
-      const res = await fetch(`${BASE}/api/contacts/search`, {
+      const res = await fetch(`/api/contacts/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain, userId }),
@@ -1445,7 +1445,7 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
   const handleAddFoundContact = async (contact: { name: string; title?: string; email?: string; linkedinUrl?: string }) => {
     setAddingContact(contact.name);
     try {
-      const res = await fetch(`${BASE}/api/crm/contacto`, {
+      const res = await fetch(`/api/crm/contacto`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, name: contact.name, title: contact.title, email: contact.email, linkedinUrl: contact.linkedinUrl, empresaId: emp.id }),
@@ -1463,7 +1463,7 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch(`${BASE}/api/crm/empresa`, {
+      await fetch(`/api/crm/empresa`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: emp.id, userId, ...editForm }),
@@ -1478,7 +1478,7 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await fetch(`${BASE}/api/crm/empresa`, {
+      await fetch(`/api/crm/empresa`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: emp.id, userId }),
@@ -1790,7 +1790,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
     if (updatingStage || stage === c.stage) return;
     setUpdatingStage(true);
     try {
-      await fetch(`${BASE}/api/crm/contacto`, {
+      await fetch(`/api/crm/contacto`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: c.id, userId, stage }),
@@ -1826,7 +1826,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
   // Check Gmail on mount
   useEffect(() => {
     if (!userId || !c.email) { setGmailConnected(false); return; }
-    fetch(`${BASE}/api/gmail-messages?userId=${encodeURIComponent(userId)}&maxResults=1`)
+    fetch(`/api/gmail-messages?userId=${encodeURIComponent(userId)}&maxResults=1`)
       .then(r => r.json())
       .then(res => {
         setGmailConnected(!res.error && !res.authRequired);
@@ -1840,7 +1840,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
     if (!c.email) return;
     setGmailLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/gmail-messages?userId=${encodeURIComponent(userId)}&contactEmail=${encodeURIComponent(c.email)}`).then(r => r.json());
+      const res = await fetch(`/api/gmail-messages?userId=${encodeURIComponent(userId)}&contactEmail=${encodeURIComponent(c.email)}`).then(r => r.json());
       setGmailMessages(Array.isArray(res.messages) ? res.messages : Array.isArray(res) ? res : []);
     } catch { setGmailMessages([]); }
     finally { setGmailLoading(false); }
@@ -1851,7 +1851,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
     setGeneratedMsg('');
     try {
       const contactActivities = actividades.filter(a => a.contactoId === c.id).slice(0, 5).map(a => ({ tipo: a.tipo, fecha: a.fecha, notas: a.notas, respuesta: a.respuesta }));
-      const res = await fetch(`${BASE}/api/generate-message`, {
+      const res = await fetch(`/api/generate-message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1879,7 +1879,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
     if (c.linkedinUrl) window.open(c.linkedinUrl, '_blank');
     // register activity
     try {
-      await fetch(`${BASE}/api/activities`, {
+      await fetch(`/api/activities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, tipo: 'mensaje_linkedin', contactoId: c.id, empresaId: c.empresaId, fecha: new Date().toISOString().split('T')[0], notas: generatedMsg.slice(0, 200) }),
@@ -1891,13 +1891,13 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
     if (!c.email) return;
     setSendingEmail(true);
     try {
-      await fetch(`${BASE}/api/gmail-send`, {
+      await fetch(`/api/gmail-send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, to: c.email, subject: composeSubject, body: composeBody, threadId: replyToThread }),
       });
       // register email activity
-      await fetch(`${BASE}/api/activities`, {
+      await fetch(`/api/activities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, tipo: 'email', contactoId: c.id, empresaId: c.empresaId, fecha: new Date().toISOString().split('T')[0], notas: `${composeSubject}: ${composeBody.slice(0, 100)}` }),
@@ -1914,7 +1914,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch(`${BASE}/api/crm/contacto`, {
+      await fetch(`/api/crm/contacto`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: c.id, userId, ...editForm, linkedin_url: editForm.linkedinUrl }),
@@ -1929,7 +1929,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await fetch(`${BASE}/api/crm/contacto`, {
+      await fetch(`/api/crm/contacto`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: c.id, userId }),
@@ -2227,7 +2227,7 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => {
-                      fetch(`${BASE}/api/activities`, {
+                      fetch(`/api/activities`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ userId, tipo: 'whatsapp', contactoId: c.id, empresaId: c.empresaId, fecha: new Date().toISOString().split('T')[0], notas: generatedMsg.slice(0, 200) }),

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: 'Gestioná tu búsqueda de trabajo, CRM y marca personal desde un solo lugar.',
   icons: {
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.png', type: 'image/png' },
     ],
   },
 };

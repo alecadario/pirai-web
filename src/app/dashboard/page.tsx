@@ -296,7 +296,7 @@ export default function DashboardPage() {
       let diagnosis = '';
       let stage = '';
       try {
-        const userRecord = await fetch(`${BASE}/api/user-record?userId=${encodeURIComponent(userId)}`).then(r => r.json());
+        const userRecord = await fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`).then(r => r.json());
         const fields = userRecord?.record?.fields ?? {};
         if (fields.onboarding_answers) {
           try {
@@ -311,7 +311,7 @@ export default function DashboardPage() {
       } catch { /* ignore */ }
 
       const data = await fetch(
-        `${BASE}/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=${encodeURIComponent(diagnosis)}&stage=${encodeURIComponent(stage)}`
+        `/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=${encodeURIComponent(diagnosis)}&stage=${encodeURIComponent(stage)}`
       ).then(r => r.json());
 
       const sortedActividades = (data.activities ?? []).sort((a: Actividad, b: Actividad) => {
@@ -334,7 +334,7 @@ export default function DashboardPage() {
     if (cached) { setInsight(JSON.parse(cached)); return; }
     setInsightLoading(true);
     try {
-      const res = await api.post<{ tip: string; gradient: string }>('/api/ai/daily-insight', { userId });
+      const res = await api.post<{ tip: string; gradient: string }>('/api/daily-insight', { userId });
       if (res?.tip) { setInsight(res); sessionStorage.setItem('pirai_daily_insight', JSON.stringify(res)); }
     } catch { /* silent */ } finally { setInsightLoading(false); }
   }, [userId]);
@@ -346,7 +346,7 @@ export default function DashboardPage() {
       const alreadyInPipeline = empresas.map(e => e.name).join(',');
       const pipelineNamesLower = new Set(empresas.map(e => e.name.toLowerCase().trim()));
       const res = await fetch(
-        `${BASE}/api/suggested-companies?userId=${encodeURIComponent(userId)}&alreadyInPipeline=${encodeURIComponent(alreadyInPipeline)}&bust=${encodeURIComponent(alreadyInPipeline.length)}`
+        `/api/suggested-companies?userId=${encodeURIComponent(userId)}&alreadyInPipeline=${encodeURIComponent(alreadyInPipeline)}&bust=${encodeURIComponent(alreadyInPipeline.length)}`
       ).then(r => r.json());
       const raw: SuggestedCompany[] = Array.isArray(res?.suggestions) ? res.suggestions : Array.isArray(res) ? res : [];
       // Client-side safety filter: remove any suggestion whose name matches a company already in the CRM
@@ -648,7 +648,7 @@ function SuggestedCompanyCard({ company, userId, onAdded }: { company: Suggested
     if (!userId || adding || added) return;
     setAdding(true);
     try {
-      const res = await fetch(`${BASE}/api/import-empresas`, {
+      const res = await fetch(`/api/import-empresas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

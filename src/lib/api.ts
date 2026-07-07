@@ -1,7 +1,9 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  // Use relative paths for /api/* routes to go through the local proxy (avoids CORS)
+  const url = path.startsWith('/api/') ? path : `${BASE_URL}${path}`;
+  const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearAuth, getUserName, getUserEmail } from '@/lib/auth';
 import {
@@ -10,34 +11,6 @@ import {
 import { useState, useEffect } from 'react';
 import { fetchQuota, PLAN_META } from '@/lib/quota';
 import { getUserId } from '@/lib/auth';
-
-function PiraiIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="pirai-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#2ECC71" />
-          <stop offset="60%" stopColor="#00A86B" />
-          <stop offset="100%" stopColor="#00BCD4" />
-        </linearGradient>
-        <mask id="pirai-mask">
-          {/* White = visible, black = cut out */}
-          <rect width="100" height="100" fill="white" />
-          {/* Cut the river out of the P */}
-          <path d="M50 16 C46 28 57 37 53 48 C49 58 38 60 36 72 C34 80 43 84 40 92" stroke="black" strokeWidth="10" strokeLinecap="round" fill="none" />
-        </mask>
-      </defs>
-      {/* Green background */}
-      <rect width="100" height="100" rx="22" fill="url(#pirai-g)" />
-      {/* White P shape with river cut out */}
-      <path
-        d="M22 16 L22 84 Q22 88 28 88 L38 88 Q44 88 44 82 L44 64 L56 64 Q78 64 84 50 Q90 34 76 24 Q68 16 52 16 Z M44 28 L52 28 Q66 28 70 40 Q74 52 62 58 Q56 62 48 62 L44 62 Z"
-        fill="white"
-        mask="url(#pirai-mask)"
-      />
-    </svg>
-  );
-}
 
 const NAV = [
   { href: '/dashboard', label: 'Tu Día', icon: LayoutDashboard },
@@ -71,7 +44,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 py-5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <PiraiIcon className="w-8 h-8 shrink-0" />
+          <Image src="/pirai-icon.png" alt="Piraí" width={32} height={32} className="w-8 h-8 shrink-0 rounded-xl" />
           <span className="text-white font-bold text-lg">Piraí</span>
         </div>
       </div>
