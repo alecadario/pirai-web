@@ -93,6 +93,22 @@ export default function MarcaPage() {
   );
 }
 
+function getCourseUrl(title: string, platform: string): string {
+  const q = encodeURIComponent(title);
+  const p = platform.toLowerCase();
+  if (p.includes('youtube')) return `https://www.youtube.com/results?search_query=${q}`;
+  if (p.includes('coursera')) return `https://www.coursera.org/search?query=${q}`;
+  if (p.includes('udemy')) return `https://www.udemy.com/courses/search/?q=${q}`;
+  if (p.includes('edx') || p.includes('edX')) return `https://www.edx.org/search?q=${q}`;
+  if (p.includes('linkedin')) return `https://www.linkedin.com/learning/search?keywords=${q}`;
+  if (p.includes('platzi')) return `https://platzi.com/buscar/?q=${q}`;
+  if (p.includes('domestika')) return `https://www.domestika.org/es/search?query=${q}`;
+  if (p.includes('hubspot')) return `https://academy.hubspot.com/search#q=${q}`;
+  if (p.includes('google')) return `https://skillshop.withgoogle.com/catalog?q=${q}`;
+  // Fallback: Google search
+  return `https://www.google.com/search?q=${q}+${encodeURIComponent(platform)}+curso`;
+}
+
 function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto }: {
   userId: string | null;
   sharedProfile: ProfileData;
@@ -466,13 +482,14 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
               <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Recomendaciones para crecer</p>
               <div className="space-y-2">
                 {profileAnalysis.course_recommendations.map((c, i) => (
-                  <div key={i} className="bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl px-3 py-2.5">
+                  <a key={i} href={getCourseUrl(c.title, c.platform)} target="_blank" rel="noopener noreferrer"
+                    className="block bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl px-3 py-2.5 hover:bg-[var(--color-pirai-100)] transition-colors group">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-semibold text-[var(--color-pirai-800)]">{c.title}</p>
-                      <span className="text-[10px] font-bold bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full shrink-0">{c.platform}</span>
+                      <p className="text-xs font-semibold text-[var(--color-pirai-800)] group-hover:underline">{c.title}</p>
+                      <span className="text-[10px] font-bold bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full shrink-0 group-hover:bg-[var(--color-pirai-200)]">{c.platform}</span>
                     </div>
                     <p className="text-[11px] text-[var(--color-pirai-600)] mt-0.5">{c.reason}</p>
-                  </div>
+                  </a>
                 ))}
               </div>
             </div>
