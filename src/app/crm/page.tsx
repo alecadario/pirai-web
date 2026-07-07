@@ -1478,6 +1478,25 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
         </div>
       </div>
 
+      {/* Contextual tips */}
+      {(() => {
+        const tips: string[] = [];
+        if (!contactosEmpresa.length) tips.push('Agregá 2 contactos clave: alguien decisor y alguien del área.');
+        if (!actividadesEmpresa.length) tips.push('Todavía no hiciste ninguna actividad. Tu mejor siguiente paso es un primer outreach.');
+        else if (actividadesEmpresa.length === 1) tips.push('Solo hay una actividad registrada. Hacé seguimiento antes de dejar enfriar esta cuenta.');
+        else if (!actividadesEmpresa.some(a => a.respuesta)) tips.push('Todavía no hubo respuesta. Probá follow-up con otro ángulo o cambiá de contacto.');
+        if (contactosEmpresa.length > 0 && !actividadesEmpresa.length) tips.push('Ya tenés contactos cargados. Convertí eso en movimiento: mandá mensaje o email.');
+        if (!tips.length && contactosEmpresa.length >= 2 && actividadesEmpresa.length >= 2) tips.push('Bien encaminado: base de contactos y actividad. Ahora cuidá consistencia y seguimiento.');
+        if (!tips.length) return null;
+        return (
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 space-y-1.5">
+            {tips.slice(0, 3).map((tip, i) => (
+              <p key={i} className="text-xs text-amber-800 flex gap-1.5"><span className="shrink-0">💡</span>{tip}</p>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Objetivo */}
       {emp.objetivo && (
         <div>
@@ -1953,6 +1972,24 @@ function ContactoDetail({ c, empresas, actividades, BASE, userId, userName, user
                 </button>
               </div>
             )}
+          </div>
+        );
+      })()}
+
+      {/* Contextual tips */}
+      {(() => {
+        const tips: string[] = [];
+        if (!empresa) tips.push('Este contacto no está vinculado a una empresa. Conectalo para no perder contexto.');
+        if (!actividadesContacto.length) tips.push('Todavía no registraste ninguna actividad. Tu siguiente paso es iniciar conversación.');
+        else if (actividadesContacto.length === 1) tips.push('Solo hay una interacción registrada. Hacé seguimiento antes de que se enfríe.');
+        else if (!actividadesContacto.some(a => a.respuesta)) tips.push('Todavía no hubo respuesta. Probá otro canal o reformulá el mensaje.');
+        if ((c.stage === 'sin_contactar' || c.stage === 'primer_contacto') && actividadesContacto.length > 0) tips.push('Actualizá la etapa del contacto para que tu pipeline refleje la realidad.');
+        if (!tips.length) return null;
+        return (
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 space-y-1.5">
+            {tips.slice(0, 3).map((tip, i) => (
+              <p key={i} className="text-xs text-amber-800 flex gap-1.5"><span className="shrink-0">💡</span>{tip}</p>
+            ))}
           </div>
         );
       })()}
