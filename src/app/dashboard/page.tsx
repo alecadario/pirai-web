@@ -391,21 +391,28 @@ export default function DashboardPage() {
         body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags }),
       });
       setAllCourses(prev => prev.map(c => c.id === course.id ? { ...c, status } : c));
+      // si se completa o skipea, asegurar que no vuelva a aparecer como recomendación
+      setClickedCourseTitles(prev => new Set([...prev, course.course_title.toLowerCase()]));
     } catch { /* silent */ } finally { setCourseUpdating(null); }
   };
 
   const handleCourseClick = async (title: string, platform: string, url: string, tags: string) => {
+    // optimistic update primero para UX inmediata
     setClickedCourseTitles(prev => new Set([...prev, title.toLowerCase()]));
-    window.open(url, '_blank', 'noopener,noreferrer');
     try {
+      // registrar en Airtable ANTES de abrir la URL
       await fetch('/api/course-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, course_title: title, platform, url, tags }),
       });
       const d = await fetch(`/api/course-progress?userId=${userId}`).then(r => r.json());
-      setAllCourses(d.courses || []);
+      const all = d.courses || [];
+      setAllCourses(all);
+      setClickedCourseTitles(new Set(all.map((c: CourseProgress) => c.course_title.toLowerCase())));
     } catch { /* silent */ }
+    // abrir URL después de registrar
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const isBizUser = ['emprendedor', 'freelancer', 'empresa'].includes(profileData?.stage ?? '');
