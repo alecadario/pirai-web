@@ -71,7 +71,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
           <div className="flex items-center">
-            <Image src="/pirai-nombre.png" alt="Piraí" width={300} height={300} className="h-9 w-auto object-contain" />
+            <Image src="/pirai-nombre.png" alt="Piraí" width={500} height={500} className="h-14 w-auto object-contain" />
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
             <a href="#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</a>
