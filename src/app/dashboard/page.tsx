@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import {
   Loader2, TrendingUp, Users, Activity, Building2,
   Sparkles, RefreshCw, Send, Target, Zap, Play,
-  ChevronRight, AlertCircle, BookOpen, CheckCircle,
+  ChevronRight, AlertCircle, BookOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -521,198 +521,124 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* TUS ACCIONES DE HOY */}
+        {/* TU APRENDIZAJE */}
         <div>
-          {/* Header con streak y progreso */}
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider">
-              Tus acciones de hoy
-            </h3>
-            {focus && focus.streak > 0 && (
-              <span className="flex items-center gap-1 text-xs font-bold text-orange-500">
-                🔥 {focus.streak} {focus.streak === 1 ? 'día' : 'días'} seguidos
-              </span>
-            )}
-          </div>
-          {focus && !loading && (
-            <div className="mb-3">
-              <div className="flex items-center justify-between text-xs text-[#718096] mb-1">
-                <span>{completedActions.size}/{focus.actions.length} completadas</span>
-                {completedActions.size === focus.actions.length && (
-                  <span className="text-[#00A86B] font-semibold">¡Día completo! 🎉</span>
-                )}
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#00A86B] rounded-full transition-all duration-500"
-                  style={{ width: `${focus.actions.length > 0 ? (completedActions.size / focus.actions.length) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          )}
-          {celebracion && (
-            <div className="mb-3 bg-[#e8f8f4] border border-[#b3e8d8] rounded-2xl p-3 text-center animate-pulse">
-              <p className="text-sm font-bold text-[#00A86B]">🏆 ¡Completaste todas tus acciones de hoy!</p>
-              {focus && focus.streak >= 3 && (
-                <p className="text-xs text-[#00A86B] mt-0.5">Racha de {focus.streak} días — ¡seguí así!</p>
-              )}
-            </div>
-          )}
+          <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider mb-3">Tu aprendizaje</h3>
           {loading ? (
-            <div className="space-y-3">
-              {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl h-16 animate-pulse" />)}
-            </div>
-          ) : focus ? (
-            <div className="space-y-3">
-              {focus.actions.map((action, i) => {
-                const done = completedActions.has(i);
-                const style = TAG_STYLES[action.tag] ?? TAG_STYLES.crecimiento;
-                return done ? (
-                  <div key={i} className="flex items-center gap-3 rounded-2xl p-4 bg-white border border-gray-200 opacity-60">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#00A86B] flex items-center justify-center">
-                      <CheckCircle className="w-5 h-5 text-white" />
-                    </div>
-                    <p className="text-sm font-semibold text-[#718096] line-through truncate flex-1">{action.label}</p>
-                  </div>
-                ) : (
-                  <Link
-                    key={i}
-                    href={getActionHref(action)}
-                    onClick={() => markActionDone(i, focus.actions.length)}
-                    className={`flex items-center gap-3 rounded-2xl p-4 transition-all shadow-sm ${style.bg} ${style.border}`}
-                  >
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${style.iconBg}`}>
-                      <span className={style.iconColor}>{ICON_MAP[action.icon] ?? <Zap className="w-5 h-5" />}</span>
+            <div className="bg-white rounded-2xl h-24 animate-pulse" />
+          ) : coursesLoaded ? (() => {
+            const today = new Date().toISOString().split('T')[0];
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+
+            const reminderCourse = allCourses.find(c =>
+              (c.status === 'in_progress' || c.status === 'started') &&
+              c.reminder_date && c.reminder_date <= today
+            );
+            if (reminderCourse) {
+              return (
+                <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-amber-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="mb-0.5">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${style.tagBg} ${style.tagColor}`}>
-                          {style.tagLabel}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold text-[#2D3748]">{action.label}</p>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Check-in de curso</span>
+                      <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{reminderCourse.course_title}</p>
+                      <p className="text-xs text-[#718096]">Ya pasaron los {reminderCourse.estimated_days} días que dijiste — ¿cómo te fue?</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleCourseUpdate(reminderCourse, 'completed')} disabled={courseUpdating === reminderCourse.id}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white py-2 rounded-xl disabled:opacity-50">
+                      {courseUpdating === reminderCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'} Lo terminé
+                    </button>
+                    <button onClick={() => handleCourseUpdate(reminderCourse, 'in_progress')} disabled={courseUpdating === reminderCourse.id}
+                      className="flex-1 flex items-center justify-center text-xs font-semibold bg-gray-100 text-gray-600 py-2 rounded-xl disabled:opacity-50">
+                      Necesito más tiempo
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            const activeCourse = allCourses.find(c => c.status === 'in_progress' || c.status === 'started');
+            if (activeCourse) {
+              return (
+                <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">En curso</span>
+                      <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{activeCourse.course_title}</p>
+                      <p className="text-xs text-[#718096]">{activeCourse.platform}{activeCourse.estimated_days ? ` · ${activeCourse.estimated_days} días estimados` : ''}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {activeCourse.status === 'started' && (
+                      <button onClick={() => handleCourseUpdate(activeCourse, 'in_progress')} disabled={courseUpdating === activeCourse.id}
+                        className="flex-1 flex items-center justify-center text-xs font-semibold bg-amber-100 text-amber-700 py-2 rounded-xl hover:bg-amber-200 disabled:opacity-50">
+                        Lo estoy haciendo
+                      </button>
+                    )}
+                    <button onClick={() => handleCourseUpdate(activeCourse, 'completed')} disabled={courseUpdating === activeCourse.id}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white py-2 rounded-xl disabled:opacity-50">
+                      {courseUpdating === activeCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'} Lo terminé
+                    </button>
+                    <button onClick={() => handleCourseUpdate(activeCourse, 'skipped')} disabled={courseUpdating === activeCourse.id}
+                      className="flex-1 flex items-center justify-center text-xs font-semibold bg-gray-100 text-gray-600 py-2 rounded-xl disabled:opacity-50">
+                      Lo dejé
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            const recentCourse = allCourses.find(c =>
+              ['completed', 'skipped', 'in_progress'].includes(c.status) &&
+              (c.started_at || '') >= thirtyDaysAgo
+            );
+            if (recentCourse) {
+              const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
+              if (!nextRec) return null;
+              return (
+                <div className="rounded-2xl p-4 bg-[#e8f6fd] border border-[#b3ddf0] shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3ddf0] flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-[#0fa8ac]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3ddf0] text-[#0fa8ac]">Recurso</span>
+                      <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
+                      <p className="text-xs text-[#718096]">{nextRec.platform}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
-                  </Link>
-                );
-              })}
+                  </div>
+                </div>
+              );
+            }
 
-              {/* Aprendizaje: curso activo, recordatorio, nuevo curso, o resource */}
-              {coursesLoaded && (() => {
-                const today = new Date().toISOString().split('T')[0];
-                const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-
-                const reminderCourse = allCourses.find(c =>
-                  (c.status === 'in_progress' || c.status === 'started') &&
-                  c.reminder_date && c.reminder_date <= today
-                );
-                if (reminderCourse) {
-                  return (
-                    <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200 shadow-sm">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Check-in de curso</span>
-                          <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{reminderCourse.course_title}</p>
-                          <p className="text-xs text-[#718096]">Ya pasaron los {reminderCourse.estimated_days} días que dijiste — ¿cómo te fue?</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleCourseUpdate(reminderCourse, 'completed')} disabled={courseUpdating === reminderCourse.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white py-2 rounded-xl disabled:opacity-50">
-                          {courseUpdating === reminderCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'} Lo terminé
-                        </button>
-                        <button onClick={() => handleCourseUpdate(reminderCourse, 'in_progress')} disabled={courseUpdating === reminderCourse.id}
-                          className="flex-1 flex items-center justify-center text-xs font-semibold bg-gray-100 text-gray-600 py-2 rounded-xl disabled:opacity-50">
-                          Necesito más tiempo
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                const activeCourse = allCourses.find(c => c.status === 'in_progress' || c.status === 'started');
-                if (activeCourse) {
-                  return (
-                    <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200 shadow-sm">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">En curso</span>
-                          <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{activeCourse.course_title}</p>
-                          <p className="text-xs text-[#718096]">{activeCourse.platform}{activeCourse.estimated_days ? ` · ${activeCourse.estimated_days} días estimados` : ''}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {activeCourse.status === 'started' && (
-                          <button onClick={() => handleCourseUpdate(activeCourse, 'in_progress')} disabled={courseUpdating === activeCourse.id}
-                            className="flex-1 flex items-center justify-center text-xs font-semibold bg-amber-100 text-amber-700 py-2 rounded-xl hover:bg-amber-200 disabled:opacity-50">
-                            Lo estoy haciendo
-                          </button>
-                        )}
-                        <button onClick={() => handleCourseUpdate(activeCourse, 'completed')} disabled={courseUpdating === activeCourse.id}
-                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white py-2 rounded-xl disabled:opacity-50">
-                          {courseUpdating === activeCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'} Lo terminé
-                        </button>
-                        <button onClick={() => handleCourseUpdate(activeCourse, 'skipped')} disabled={courseUpdating === activeCourse.id}
-                          className="flex-1 flex items-center justify-center text-xs font-semibold bg-gray-100 text-gray-600 py-2 rounded-xl disabled:opacity-50">
-                          Lo dejé
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                const recentCourse = allCourses.find(c =>
-                  ['completed', 'skipped', 'in_progress'].includes(c.status) &&
-                  (c.started_at || '') >= thirtyDaysAgo
-                );
-                if (recentCourse) {
-                  const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
-                  if (!nextRec) return null;
-                  return (
-                    <div className="rounded-2xl p-4 bg-[#e8f6fd] border border-[#b3ddf0] shadow-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3ddf0] flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-[#0fa8ac]" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3ddf0] text-[#0fa8ac]">Recurso</span>
-                          <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
-                          <p className="text-xs text-[#718096]">{nextRec.platform}</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
-                      </div>
-                    </div>
-                  );
-                }
-
-                const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
-                if (nextRec) {
-                  const href = `https://www.google.com/search?q=${encodeURIComponent(nextRec.title)}+${encodeURIComponent(nextRec.platform)}+curso`;
-                  return (
-                    <button onClick={() => handleCourseClick(nextRec.title, nextRec.platform, href, '')}
-                      className="w-full flex items-center gap-3 rounded-2xl p-4 bg-[#e8f8f4] border border-[#b3e8d8] hover:shadow-sm transition-all text-left shadow-sm">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3e8d8] flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-[#00A86B]" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3e8d8] text-[#00A86B]">Curso del mes</span>
-                        <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
-                        <p className="text-xs text-[#718096]">{nextRec.platform}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
-                    </button>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-          ) : null}
+            const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
+            if (nextRec) {
+              const href = `https://www.google.com/search?q=${encodeURIComponent(nextRec.title)}+${encodeURIComponent(nextRec.platform)}+curso`;
+              return (
+                <button onClick={() => handleCourseClick(nextRec.title, nextRec.platform, href, '')}
+                  className="w-full flex items-center gap-3 rounded-2xl p-4 bg-[#e8f8f4] border border-[#b3e8d8] hover:shadow-sm transition-all text-left shadow-sm">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3e8d8] flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-[#00A86B]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3e8d8] text-[#00A86B]">Curso del mes</span>
+                    <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
+                    <p className="text-xs text-[#718096]">{nextRec.platform}</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
+                </button>
+              );
+            }
+            return null;
+          })() : null}
         </div>
 
         {/* TU PROGRESO */}
