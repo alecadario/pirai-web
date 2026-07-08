@@ -6,56 +6,64 @@ import { useState } from 'react';
 import {
   Target, Zap, BookOpen, Sparkles, Users, BarChart3,
   ChevronRight, Smartphone, Monitor, ArrowRight,
+  Briefcase, Building2,
 } from 'lucide-react';
 
-const FEATURES = [
-  {
-    icon: Target,
-    color: 'bg-[#00A86B]/10 text-[#00A86B]',
-    title: 'CRM de búsqueda laboral',
-    desc: 'Seguí cada empresa, contacto y postulación en un solo lugar. Nunca más perder el hilo.',
+const CONTENT = {
+  candidato: {
+    badge: 'Para quienes buscan trabajo',
+    headline: 'Tu copiloto para',
+    highlight: 'conseguir trabajo',
+    sub: 'Piraí organiza tu búsqueda laboral, te dice qué hacer cada día y te ayuda a construir relaciones reales. Menos caos, más resultados.',
+    sectionLabel: '¿Qué es Piraí para vos?',
+    sectionTitle: 'Buscar trabajo es un trabajo.',
+    sectionHighlight: 'Piraí te lo hace más fácil.',
+    sectionDesc: 'La mayoría manda CVs al vacío y espera. Piraí cambia eso: te da un sistema claro, te dice qué hacer cada día y te acompaña hasta que conseguís lo que buscás.',
+    features: [
+      { icon: Target, color: 'bg-[#00A86B]/10 text-[#00A86B]', title: 'CRM de búsqueda laboral', desc: 'Seguí cada empresa, contacto y postulación en un solo lugar. Nunca más perder el hilo.' },
+      { icon: Zap, color: 'bg-amber-100 text-amber-600', title: 'Acciones diarias inteligentes', desc: 'Piraí analiza tu pipeline y te dice exactamente qué hacer hoy para avanzar.' },
+      { icon: Sparkles, color: 'bg-[#1BCDD1]/10 text-[#1BCDD1]', title: 'Marca personal', desc: 'Analizá tu perfil de LinkedIn, generá mensajes personalizados y destacate.' },
+      { icon: BookOpen, color: 'bg-purple-100 text-purple-600', title: 'Cursos y recursos', desc: 'Recibís el curso del mes y recursos seleccionados para seguir creciendo.' },
+      { icon: Users, color: 'bg-rose-100 text-rose-600', title: 'Networking con propósito', desc: 'Organizá tus contactos, hacé seguimiento y construí relaciones que importan.' },
+      { icon: BarChart3, color: 'bg-[#1BCDD1]/10 text-[#1BCDD1]', title: 'Insights de tu búsqueda', desc: 'Métricas claras: tasa de respuesta, actividad semanal, progreso real.' },
+    ],
+    steps: [
+      { num: '01', title: 'Cargás tus empresas objetivo', desc: 'Sumás las empresas que te interesan y tus contactos dentro de cada una.' },
+      { num: '02', title: 'Piraí te dice qué hacer', desc: 'Cada día recibís 2-3 acciones priorizadas según tu pipeline real.' },
+      { num: '03', title: 'Actuás y registrás', desc: 'Mandás mensajes, vas a entrevistas, hacés seguimiento. Todo queda en el CRM.' },
+      { num: '04', title: 'Ves tu progreso crecer', desc: 'Insights semanales, racha de días activos y cursos para seguir mejorando.' },
+    ],
   },
-  {
-    icon: Zap,
-    color: 'bg-amber-100 text-amber-600',
-    title: 'Acciones diarias inteligentes',
-    desc: 'Piraí analiza tu pipeline y te dice exactamente qué hacer hoy para avanzar.',
+  emprendedor: {
+    badge: 'Para emprendedores',
+    headline: 'Tu copiloto para',
+    highlight: 'hacer crecer tu negocio',
+    sub: 'Piraí te ayuda a organizar tu pipeline comercial, hacer seguimiento de clientes potenciales y construir relaciones que generan resultados.',
+    sectionLabel: '¿Qué es Piraí para vos?',
+    sectionTitle: 'Conseguir clientes requiere un sistema.',
+    sectionHighlight: 'Piraí te lo da.',
+    sectionDesc: 'La mayoría improvisa su prospección y pierde oportunidades. Piraí te da un CRM simple, acciones diarias y métricas claras para que nunca pierdas el hilo con un cliente potencial.',
+    features: [
+      { icon: Target, color: 'bg-[#00A86B]/10 text-[#00A86B]', title: 'CRM de prospección', desc: 'Seguí cada lead, cliente potencial y oportunidad en un solo lugar.' },
+      { icon: Zap, color: 'bg-amber-100 text-amber-600', title: 'Acciones de follow-up', desc: 'Piraí te recuerda cuándo escribir, cuándo llamar y a quién priorizar hoy.' },
+      { icon: Sparkles, color: 'bg-[#1BCDD1]/10 text-[#1BCDD1]', title: 'Mensajes personalizados', desc: 'Generá outreach que no suene a spam. Con contexto real de cada contacto.' },
+      { icon: Users, color: 'bg-rose-100 text-rose-600', title: 'Gestión de contactos', desc: 'Construí relaciones duraderas con tus clientes, socios e inversores.' },
+      { icon: BookOpen, color: 'bg-purple-100 text-purple-600', title: 'Recursos para founders', desc: 'Cursos y contenido seleccionado para que sigas creciendo como emprendedor.' },
+      { icon: BarChart3, color: 'bg-[#1BCDD1]/10 text-[#1BCDD1]', title: 'Métricas de tu pipeline', desc: 'Tasas de conversión, actividad semanal y progreso real de tu prospección.' },
+    ],
+    steps: [
+      { num: '01', title: 'Cargás tus leads y contactos', desc: 'Sumás los clientes potenciales, socios o inversores que querés cultivar.' },
+      { num: '02', title: 'Piraí te dice qué hacer', desc: 'Cada día recibís acciones concretas: a quién escribir, con quién hacer follow-up.' },
+      { num: '03', title: 'Actuás y registrás', desc: 'Mandás mensajes, hacés llamadas, agendás reuniones. Todo queda en el CRM.' },
+      { num: '04', title: 'Convertís más oportunidades', desc: 'Métricas claras, racha de días activos y aprendizaje continuo.' },
+    ],
   },
-  {
-    icon: Sparkles,
-    color: 'bg-[#1BCDD1]/10 text-[#1BCDD1]',
-    title: 'Marca personal',
-    desc: 'Analizá tu perfil de LinkedIn, generá mensajes personalizados y destacate.',
-  },
-  {
-    icon: BookOpen,
-    color: 'bg-purple-100 text-purple-600',
-    title: 'Cursos y recursos',
-    desc: 'Recibís el curso del mes y recursos seleccionados para seguir creciendo.',
-  },
-  {
-    icon: Users,
-    color: 'bg-rose-100 text-rose-600',
-    title: 'Networking con propósito',
-    desc: 'Organizá tus contactos, hacé seguimiento y construí relaciones que importan.',
-  },
-  {
-    icon: BarChart3,
-    color: 'bg-[#1BCDD1]/10 text-[#1BCDD1]',
-    title: 'Insights de tu búsqueda',
-    desc: 'Métricas claras: tasa de respuesta, actividad semanal, progreso real.',
-  },
-];
-
-const STEPS = [
-  { num: '01', title: 'Cargás tus empresas objetivo', desc: 'Sumás las empresas que te interesan y tus contactos dentro de cada una.' },
-  { num: '02', title: 'Piraí te dice qué hacer', desc: 'Cada día recibís 2-3 acciones priorizadas según tu pipeline real.' },
-  { num: '03', title: 'Actuás y registrás', desc: 'Mandás mensajes, vas a entrevistas, hacés seguimiento. Todo queda en el CRM.' },
-  { num: '04', title: 'Ves tu progreso crecer', desc: 'Insights semanales, racha de días activos y cursos para seguir mejorando.' },
-];
+};
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [perfil, setPerfil] = useState<'candidato' | 'emprendedor'>('candidato');
+  const c = CONTENT[perfil];
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -101,25 +109,49 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#00A86B]/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 pointer-events-none" />
 
         <div className="relative max-w-4xl mx-auto text-center">
+          {/* NOMBRE logo — color, grande */}
           <div className="flex justify-center mb-8">
-            <Image src="/pirai-nombre.png" alt="Piraí" width={300} height={300} className="h-24 w-auto object-contain" style={{filter: 'brightness(0) invert(1)'}} />
+            <Image src="/pirai-nombre.png" alt="Piraí" width={400} height={400} className="h-16 md:h-20 w-auto object-contain" />
           </div>
 
-          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
+          {/* SELECTOR DE PERFIL */}
+          <div className="inline-flex bg-white/10 border border-white/20 rounded-2xl p-1 mb-8">
+            <button
+              onClick={() => setPerfil('candidato')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                perfil === 'candidato'
+                  ? 'bg-white text-[#2D3748] shadow-md'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" /> Busco trabajo
+            </button>
+            <button
+              onClick={() => setPerfil('emprendedor')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                perfil === 'emprendedor'
+                  ? 'bg-white text-[#2D3748] shadow-md'
+                  : 'text-white/70 hover:text-white'
+              }`}
+            >
+              <Building2 className="w-4 h-4" /> Soy emprendedor
+            </button>
+          </div>
+
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6 ml-3">
             <span className="w-2 h-2 rounded-full bg-[#1BCDD1] animate-pulse" />
             En lanzamiento — unite a los primeros usuarios
           </div>
 
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
-            Tu copiloto para<br />
+            {c.headline}<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1BCDD1] to-[#4DCB9D]">
-              conseguir trabajo
+              {c.highlight}
             </span>
           </h1>
 
           <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Piraí organiza tu búsqueda laboral, te dice qué hacer cada día y te ayuda a construir
-            relaciones reales. Menos caos, más resultados.
+            {c.sub}
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -153,7 +185,7 @@ export default function LandingPage() {
           {[
             { num: '500+', label: 'usuarios en beta' },
             { num: '12k+', label: 'actividades registradas' },
-            { num: '3x', label: 'más entrevistas' },
+            { num: '3x', label: 'más resultados' },
             { num: '0€', label: 'para empezar' },
           ].map(({ num, label }) => (
             <div key={label}>
@@ -168,19 +200,16 @@ export default function LandingPage() {
       <section id="que-es" className="py-24 px-5">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">¿Qué es Piraí?</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">{c.sectionLabel}</span>
             <h2 className="text-4xl font-extrabold text-[#2D3748] mb-4">
-              Buscar trabajo es un trabajo.<br />
-              <span className="text-[#00A86B]">Piraí te lo hace más fácil.</span>
+              {c.sectionTitle}<br />
+              <span className="text-[#00A86B]">{c.sectionHighlight}</span>
             </h2>
-            <p className="text-lg text-[#718096] max-w-2xl mx-auto">
-              La mayoría manda CVs al vacío y espera. Piraí cambia eso: te da un sistema claro,
-              te dice qué hacer cada día y te acompaña hasta que conseguís lo que buscás.
-            </p>
+            <p className="text-lg text-[#718096] max-w-2xl mx-auto">{c.sectionDesc}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map(({ icon: Icon, color, title, desc }) => (
+            {c.features.map(({ icon: Icon, color, title, desc }) => (
               <div key={title} className="bg-white rounded-3xl p-6 border border-[#E2E8F0] hover:shadow-md transition-shadow">
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center mb-4 ${color}`}>
                   <Icon className="w-5 h-5" />
@@ -203,7 +232,7 @@ export default function LandingPage() {
           </div>
 
           <div className="space-y-4">
-            {STEPS.map(({ num, title, desc }) => (
+            {c.steps.map(({ num, title, desc }) => (
               <div key={num} className="flex items-start gap-5 bg-white/5 border border-white/10 rounded-3xl p-6 hover:bg-white/8 transition-colors">
                 <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00A86B] to-[#1BCDD1] flex items-center justify-center">
                   <span className="text-white font-extrabold text-sm">{num}</span>
@@ -258,7 +287,7 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto">
           <h2 className="text-4xl font-extrabold mb-4">¿Empezamos?</h2>
           <p className="text-lg text-white/80 mb-8">
-            Unite a cientos de personas que ya organizaron su búsqueda con Piraí.
+            Unite a cientos de personas que ya organizaron su camino con Piraí.
             Es gratis, rápido y cambia todo.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
