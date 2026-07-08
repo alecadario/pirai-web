@@ -8,7 +8,7 @@ import {
   Loader2, Building2, Users, Calendar, Plus, Search,
   ChevronRight, ExternalLink, Mail, Link2, X, Phone,
   Pencil, Trash2, CheckCircle, Activity, ChevronDown,
-  MessageSquare, Send, Inbox, Copy, UserPlus, Zap,
+  MessageSquare, Send, Inbox, Copy, UserPlus, Zap, Sparkles,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1552,10 +1552,10 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-2 text-center bg-[var(--color-brand-gray)] rounded-xl p-3">
-        <button onClick={() => setShowContactos(v => !v)} className="hover:bg-white rounded-lg p-2 transition-colors">
+        <div className="p-2">
           <p className="text-lg font-bold text-[var(--color-pirai-600)]">{contactosEmpresa.length}</p>
-          <p className="text-[10px] text-gray-500 flex items-center justify-center gap-0.5">Contactos {showContactos ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</p>
-        </button>
+          <p className="text-[10px] text-gray-500">Contactos</p>
+        </div>
         <div className="p-2">
           <p className="text-lg font-bold text-[var(--color-turquesa-500)]">{emp.numActividades ?? actividadesEmpresa.length}</p>
           <p className="text-[10px] text-gray-500">Actividades</p>
@@ -1614,74 +1614,104 @@ function EmpresaDetail({ emp, contactos, actividades, BASE, userId, onClose, onU
         )}
       </div>
 
-      {/* Contactos expandible + buscar */}
-      {showContactos && (
-        <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
-          <div className="px-3 py-2 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center justify-between">
-            <p className="text-xs font-semibold text-[var(--color-brand-muted)]">Contactos ({contactosEmpresa.length})</p>
-            <button
-              onClick={handleSearchContacts}
-              disabled={searchingContacts}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors"
-            >
-              {searchingContacts ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserPlus className="w-3 h-3" />}
-              {searchingContacts ? 'Buscando...' : 'Buscar contactos'}
-            </button>
+      {/* Contactos — siempre visible */}
+      <div className="border border-[var(--color-brand-border)] rounded-xl overflow-hidden">
+        <div className="px-3 py-2.5 bg-[var(--color-brand-gray)] border-b border-[var(--color-brand-border)] flex items-center justify-between">
+          <p className="text-xs font-semibold text-[var(--color-brand-dark)] flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-[var(--color-pirai-500)]" />
+            Contactos {contactosEmpresa.length > 0 && <span className="text-[var(--color-pirai-600)]">({contactosEmpresa.length})</span>}
+          </p>
+          <button
+            onClick={handleSearchContacts}
+            disabled={searchingContacts}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors"
+          >
+            {searchingContacts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            {searchingContacts ? 'Buscando...' : 'Buscar contactos'}
+          </button>
+        </div>
+
+        {/* Lista de contactos existentes */}
+        {contactosEmpresa.length > 0 && (
+          <div className="divide-y divide-[var(--color-brand-border)]">
+            {contactosEmpresa.map(c => (
+              <button key={c.id} onClick={() => onSelectContact(c)} className="w-full px-3 py-3 flex items-center justify-between hover:bg-[var(--color-pirai-50)] transition-colors text-left group">
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-brand-dark)]">{c.name}</p>
+                  {c.title && <p className="text-xs text-gray-400">{c.title}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {c.stage && <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]">{STAGE_LABELS[c.stage] ?? c.stage}</Badge>}
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[var(--color-pirai-500)] transition-colors" />
+                </div>
+              </button>
+            ))}
           </div>
-          {contactosEmpresa.length === 0 && !contactSearchDone ? (
-            <p className="p-4 text-xs text-gray-400 text-center">Sin contactos aún. Usá el botón para buscar.</p>
-          ) : (
+        )}
+
+        {/* Empty state con CTAs */}
+        {contactosEmpresa.length === 0 && !contactSearchDone && !searchingContacts && (
+          <div className="p-5 text-center space-y-3">
+            <p className="text-sm text-gray-500 font-medium">Sin contactos en {emp.name}</p>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Buscá contactos automáticamente por dominio o agregá uno manualmente.
+            </p>
+            <div className="flex gap-2 justify-center flex-wrap">
+              <button
+                onClick={handleSearchContacts}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-pirai-500)] text-white hover:bg-[var(--color-pirai-600)] transition-colors"
+              >
+                <Search className="w-3.5 h-3.5" /> Buscar contactos automáticamente
+              </button>
+            </div>
+          </div>
+        )}
+
+        {searchingContacts && (
+          <div className="p-5 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-[var(--color-pirai-500)]" /> Buscando contactos en {emp.website || emp.name}...
+          </div>
+        )}
+
+        {/* Resultados de búsqueda automática */}
+        {foundContacts.length > 0 && (
+          <>
+            <div className="px-3 py-2 bg-[var(--color-pirai-50)] border-t border-[var(--color-pirai-100)] flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[var(--color-pirai-600)]" />
+              <p className="text-xs font-semibold text-[var(--color-pirai-700)]">{foundContacts.length} contacto{foundContacts.length !== 1 ? 's' : ''} encontrado{foundContacts.length !== 1 ? 's' : ''} — elegí cuáles agregar</p>
+            </div>
             <div className="divide-y divide-[var(--color-brand-border)]">
-              {contactosEmpresa.map(c => (
-                <button key={c.id} onClick={() => onSelectContact(c)} className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-[var(--color-pirai-50)] transition-colors text-left">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--color-brand-dark)]">{c.name}</p>
-                    {c.title && <p className="text-xs text-gray-400">{c.title}</p>}
+              {foundContacts.map((fc, i) => (
+                <div key={i} className="px-3 py-3 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[var(--color-brand-dark)] truncate">{fc.name}</p>
+                    {fc.title && <p className="text-xs text-gray-400 truncate">{fc.title}</p>}
+                    {fc.email && <p className="text-[10px] text-[var(--color-pirai-600)] truncate">{fc.email}</p>}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {c.stage && <Badge className="bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)]">{STAGE_LABELS[c.stage] ?? c.stage}</Badge>}
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
-                  </div>
-                </button>
+                  {addedContacts.has(fc.name) ? (
+                    <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-1 shrink-0"><CheckCircle className="w-3.5 h-3.5" /> Agregado</span>
+                  ) : (
+                    <button
+                      onClick={() => handleAddFoundContact(fc)}
+                      disabled={addingContact === fc.name}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] border border-[var(--color-pirai-200)] hover:bg-[var(--color-pirai-100)] disabled:opacity-60 transition-colors shrink-0"
+                    >
+                      {addingContact === fc.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                      Agregar
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
-          )}
-          {/* Found contacts from search */}
-          {foundContacts.length > 0 && (
-            <>
-              <div className="px-3 py-1.5 bg-[var(--color-pirai-50)] border-t border-[var(--color-pirai-100)]">
-                <p className="text-[10px] font-semibold text-[var(--color-pirai-700)]">Encontrados ({foundContacts.length})</p>
-              </div>
-              <div className="divide-y divide-[var(--color-brand-border)]">
-                {foundContacts.map((fc, i) => (
-                  <div key={i} className="px-3 py-2.5 flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--color-brand-dark)] truncate">{fc.name}</p>
-                      {fc.title && <p className="text-xs text-gray-400 truncate">{fc.title}</p>}
-                      {fc.email && <p className="text-[10px] text-[var(--color-pirai-600)] truncate">{fc.email}</p>}
-                    </div>
-                    {addedContacts.has(fc.name) ? (
-                      <span className="text-xs text-[var(--color-pirai-600)] font-semibold flex items-center gap-0.5"><CheckCircle className="w-3 h-3" /> Agregado</span>
-                    ) : (
-                      <button
-                        onClick={() => handleAddFoundContact(fc)}
-                        disabled={addingContact === fc.name}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-100)] disabled:opacity-60 transition-colors shrink-0"
-                      >
-                        {addingContact === fc.name ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                        Agregar
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {contactSearchDone && foundContacts.length === 0 && (
-            <p className="px-3 py-2 text-[10px] text-gray-400 border-t border-[var(--color-brand-border)]">No se encontraron contactos nuevos para agregar.</p>
-          )}
-        </div>
-      )}
+          </>
+        )}
+
+        {contactSearchDone && foundContacts.length === 0 && (
+          <p className="px-3 py-3 text-xs text-gray-400 border-t border-[var(--color-brand-border)] text-center">
+            No se encontraron contactos nuevos. Agregá uno manualmente.
+          </p>
+        )}
+      </div>
 
       {/* Activities timeline */}
       {actividadesEmpresa.length > 0 && (
