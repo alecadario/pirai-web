@@ -568,7 +568,7 @@ export default function DashboardPage() {
                 const done = completedActions.has(i);
                 const style = TAG_STYLES[action.tag] ?? TAG_STYLES.crecimiento;
                 return done ? (
-                  <div key={i} className="flex items-center gap-3 rounded-2xl p-4 bg-gray-50 border border-gray-100 opacity-60">
+                  <div key={i} className="flex items-center gap-3 rounded-2xl p-4 bg-white border border-gray-200 opacity-60">
                     <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#00A86B] flex items-center justify-center">
                       <CheckCircle className="w-5 h-5 text-white" />
                     </div>
