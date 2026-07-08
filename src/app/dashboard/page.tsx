@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import {
   Loader2, TrendingUp, Users, Activity, Building2,
   Sparkles, RefreshCw, Send, Target, Zap, Play,
-  ChevronRight, AlertCircle, ArrowUpRight, BookOpen, Check, X,
+  ChevronRight, AlertCircle, BookOpen, Check,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -257,16 +257,10 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   Play: <Play className="w-4 h-4" />,
 };
 
-const TAG_STYLES: Record<string, string> = {
-  urgente: 'bg-red-50 border border-red-100',
-  crecimiento: 'bg-[#e8f8f4] border border-[#b3e8d8]',
-  'aprendé': 'bg-[#e8f6fd] border border-[#b3ddf0]',
-};
-
-const TAG_BADGE: Record<string, string> = {
-  urgente: 'bg-red-100 text-red-700',
-  crecimiento: 'bg-[#00A86B]/10 text-[#00A86B]',
-  'aprendé': 'bg-[#1BCDD1]/10 text-[#0fa8ac]',
+const TAG_STYLES: Record<string, { bg: string; border: string; iconBg: string; iconColor: string; tagBg: string; tagColor: string; tagLabel: string }> = {
+  urgente:     { bg: 'bg-red-50',      border: 'border border-red-200 hover:border-red-300',         iconBg: 'bg-red-100',      iconColor: 'text-red-600',      tagBg: 'bg-red-100',      tagColor: 'text-red-700',      tagLabel: 'Urgente'     },
+  crecimiento: { bg: 'bg-[#e8f8f4]',  border: 'border border-[#b3e8d8] hover:border-[#7dd4b8]',    iconBg: 'bg-[#b3e8d8]',   iconColor: 'text-[#00A86B]',   tagBg: 'bg-[#b3e8d8]',   tagColor: 'text-[#00A86B]',   tagLabel: 'Crecimiento' },
+  'aprendé':   { bg: 'bg-[#e8f6fd]',  border: 'border border-[#b3ddf0] hover:border-[#7ec8e8]',    iconBg: 'bg-[#b3ddf0]',   iconColor: 'text-[#0fa8ac]',   tagBg: 'bg-[#b3ddf0]',   tagColor: 'text-[#0fa8ac]',   tagLabel: 'Aprendé'     },
 };
 
 interface CourseProgress {
@@ -276,6 +270,8 @@ interface CourseProgress {
   tags: string;
   started_at: string;
   status: string;
+  estimated_days?: number | null;
+  reminder_date?: string | null;
 }
 
 export default function DashboardPage() {
@@ -293,6 +289,8 @@ export default function DashboardPage() {
   const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
   const [courseRecs, setCourseRecs] = useState<Array<{ title: string; platform: string; reason: string; url?: string }>>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const [courseEstimateModal, setCourseEstimateModal] = useState<{ course: CourseProgress } | null>(null);
+  const [courseEstimateDays, setCourseEstimateDays] = useState('');
   const [completedActions, setCompletedActions] = useState<Set<number>>(new Set());
   const [celebracion, setCelebracion] = useState(false);
 
@@ -388,17 +386,24 @@ export default function DashboardPage() {
   }, [loadData, loadInsight, userId]);
   useEffect(() => { if (!loading) loadSuggestedCompanies(); }, [loading, loadSuggestedCompanies]);
 
-  const handleCourseUpdate = async (course: CourseProgress, status: 'completed' | 'skipped') => {
+  const handleCourseUpdate = async (course: CourseProgress, status: 'completed' | 'skipped' | 'in_progress', estimatedDays?: number) => {
+    if (status === 'in_progress' && !estimatedDays) {
+      setCourseEstimateModal({ course });
+      setCourseEstimateDays('');
+      return;
+    }
     setCourseUpdating(course.id);
     try {
+      const reminderDate = estimatedDays ? (() => { const d = new Date(); d.setDate(d.getDate() + estimatedDays); return d.toISOString().split('T')[0]; })() : null;
       await fetch('/api/course-progress', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags }),
+        body: JSON.stringify({ recordId: course.id, status, userId, tags: course.tags, estimated_days: estimatedDays }),
       });
-      setAllCourses(prev => prev.map(c => c.id === course.id ? { ...c, status } : c));
-      // si se completa o skipea, asegurar que no vuelva a aparecer como recomendación
-      setClickedCourseTitles(prev => new Set([...prev, course.course_title.toLowerCase()]));
+      setAllCourses(prev => prev.map(c => c.id === course.id ? { ...c, status, estimated_days: estimatedDays, reminder_date: reminderDate } : c));
+      if (status !== 'in_progress') {
+        setClickedCourseTitles(prev => new Set([...prev, course.course_title.toLowerCase()]));
+      }
     } catch { /* silent */ } finally { setCourseUpdating(null); }
   };
 
@@ -561,78 +566,146 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {focus.actions.map((action, i) => {
                 const done = completedActions.has(i);
+                const style = TAG_STYLES[action.tag] ?? TAG_STYLES.crecimiento;
                 return done ? (
-                  <div key={i} className="flex items-center gap-4 rounded-2xl p-4 bg-gray-50 border border-gray-100 opacity-60">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-[#00A86B] flex items-center justify-center shadow-sm">
-                      <Check className="w-4 h-4 text-white" />
+                  <div key={i} className="flex items-center gap-3 rounded-2xl p-4 bg-gray-50 border border-gray-100 opacity-60">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#00A86B] flex items-center justify-center">
+                      <Check className="w-5 h-5 text-white" />
                     </div>
-                    <p className="text-sm font-medium text-[#718096] line-through truncate flex-1">{action.label}</p>
+                    <p className="text-sm font-semibold text-[#718096] line-through truncate flex-1">{action.label}</p>
                   </div>
                 ) : (
                   <Link
                     key={i}
                     href={getActionHref(action)}
                     onClick={() => markActionDone(i, focus.actions.length)}
-                    className={`flex items-center gap-4 rounded-2xl p-4 transition-all hover:shadow-sm ${TAG_STYLES[action.tag]}`}
+                    className={`flex items-center gap-3 rounded-2xl p-4 transition-all shadow-sm ${style.bg} ${style.border}`}
                   >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm text-[#2D3748]">
-                      {ICON_MAP[action.icon] ?? <Zap className="w-4 h-4" />}
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${style.iconBg}`}>
+                      <span className={style.iconColor}>{ICON_MAP[action.icon] ?? <Zap className="w-5 h-5" />}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#2D3748] truncate">{action.label}</p>
+                      <div className="mb-0.5">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${style.tagBg} ${style.tagColor}`}>
+                          {style.tagLabel}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-[#2D3748]">{action.label}</p>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${TAG_BADGE[action.tag]}`}>
-                      {action.tag}
-                    </span>
-                    <ArrowUpRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
                   </Link>
                 );
               })}
 
-              {/* Recurso del día / check-in — dentro de las acciones */}
+              {/* Aprendizaje: curso activo, recordatorio, nuevo curso, o resource */}
               {coursesLoaded && (() => {
-                const pendingCourse = allCourses.find(c => c.status === 'started');
-                if (pendingCourse) {
+                const today = new Date().toISOString().split('T')[0];
+                const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+
+                const reminderCourse = allCourses.find(c =>
+                  (c.status === 'in_progress' || c.status === 'started') &&
+                  c.reminder_date && c.reminder_date <= today
+                );
+                if (reminderCourse) {
                   return (
-                    <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                          <BookOpen className="w-4 h-4 text-amber-500" />
+                    <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                          <BookOpen className="w-5 h-5 text-amber-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-0.5">¿Cómo vas?</p>
-                          <p className="text-sm font-medium text-[#2D3748] truncate">{pendingCourse.course_title}</p>
-                          <p className="text-xs text-[#718096]">{pendingCourse.platform}</p>
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Check-in de curso</span>
+                          <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{reminderCourse.course_title}</p>
+                          <p className="text-xs text-[#718096]">Ya pasaron los {reminderCourse.estimated_days} días que dijiste — ¿cómo te fue?</p>
                         </div>
-                        <div className="flex gap-2 shrink-0">
-                          <button onClick={() => handleCourseUpdate(pendingCourse, 'completed')} disabled={courseUpdating === pendingCourse.id}
-                            className="flex items-center gap-1 text-xs font-semibold bg-[#00A86B] text-white px-3 py-1.5 rounded-lg hover:bg-[#008a58] disabled:opacity-50">
-                            {courseUpdating === pendingCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} Hecho
-                          </button>
-                          <button onClick={() => handleCourseUpdate(pendingCourse, 'skipped')} disabled={courseUpdating === pendingCourse.id}
-                            className="text-xs font-semibold bg-white text-gray-500 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleCourseUpdate(reminderCourse, 'completed')} disabled={courseUpdating === reminderCourse.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white py-2 rounded-xl disabled:opacity-50">
+                          {courseUpdating === reminderCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'} Lo terminé
+                        </button>
+                        <button onClick={() => handleCourseUpdate(reminderCourse, 'in_progress')} disabled={courseUpdating === reminderCourse.id}
+                          className="flex-1 flex items-center justify-center text-xs font-semibold bg-gray-100 text-gray-600 py-2 rounded-xl disabled:opacity-50">
+                          Necesito más tiempo
+                        </button>
                       </div>
                     </div>
                   );
                 }
+
+                const activeCourse = allCourses.find(c => c.status === 'in_progress' || c.status === 'started');
+                if (activeCourse) {
+                  return (
+                    <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                          <BookOpen className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">En curso</span>
+                          <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{activeCourse.course_title}</p>
+                          <p className="text-xs text-[#718096]">{activeCourse.platform}{activeCourse.estimated_days ? ` · ${activeCourse.estimated_days} días estimados` : ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {activeCourse.status === 'started' && (
+                          <button onClick={() => handleCourseUpdate(activeCourse, 'in_progress')} disabled={courseUpdating === activeCourse.id}
+                            className="flex-1 flex items-center justify-center text-xs font-semibold bg-amber-100 text-amber-700 py-2 rounded-xl hover:bg-amber-200 disabled:opacity-50">
+                            Lo estoy haciendo
+                          </button>
+                        )}
+                        <button onClick={() => handleCourseUpdate(activeCourse, 'completed')} disabled={courseUpdating === activeCourse.id}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-[#00A86B] text-white py-2 rounded-xl disabled:opacity-50">
+                          {courseUpdating === activeCourse.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'} Lo terminé
+                        </button>
+                        <button onClick={() => handleCourseUpdate(activeCourse, 'skipped')} disabled={courseUpdating === activeCourse.id}
+                          className="flex-1 flex items-center justify-center text-xs font-semibold bg-gray-100 text-gray-600 py-2 rounded-xl disabled:opacity-50">
+                          Lo dejé
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                const recentCourse = allCourses.find(c =>
+                  ['completed', 'skipped', 'in_progress'].includes(c.status) &&
+                  (c.started_at || '') >= thirtyDaysAgo
+                );
+                if (recentCourse) {
+                  const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
+                  if (!nextRec) return null;
+                  return (
+                    <div className="rounded-2xl p-4 bg-[#e8f6fd] border border-[#b3ddf0] shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3ddf0] flex items-center justify-center">
+                          <BookOpen className="w-5 h-5 text-[#0fa8ac]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3ddf0] text-[#0fa8ac]">Recurso</span>
+                          <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
+                          <p className="text-xs text-[#718096]">{nextRec.platform}</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
+                      </div>
+                    </div>
+                  );
+                }
+
                 const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
                 if (nextRec) {
                   const href = `https://www.google.com/search?q=${encodeURIComponent(nextRec.title)}+${encodeURIComponent(nextRec.platform)}+curso`;
                   return (
                     <button onClick={() => handleCourseClick(nextRec.title, nextRec.platform, href, '')}
-                      className="w-full flex items-center gap-4 rounded-2xl p-4 bg-[#e8f8f4] border border-[#b3e8d8] hover:shadow-sm transition-all text-left">
-                      <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                        <BookOpen className="w-4 h-4 text-[#00A86B]" />
+                      className="w-full flex items-center gap-3 rounded-2xl p-4 bg-[#e8f8f4] border border-[#b3e8d8] hover:shadow-sm transition-all text-left shadow-sm">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3e8d8] flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-[#00A86B]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#2D3748] truncate">{nextRec.title}</p>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3e8d8] text-[#00A86B]">Curso del mes</span>
+                        <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
                         <p className="text-xs text-[#718096]">{nextRec.platform}</p>
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#00A86B]/10 text-[#00A86B] shrink-0">aprendé</span>
-                      <ArrowUpRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
+                      <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
                     </button>
                   );
                 }
@@ -714,6 +787,45 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+      {/* Modal días estimados de curso */}
+      {courseEstimateModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="font-bold text-[#2D3748] text-base mb-1">Lo estoy haciendo 📚</h3>
+            <p className="text-sm text-[#718096] mb-4">
+              ¿En cuántos días estimás terminar <span className="font-semibold">{courseEstimateModal.course.course_title}</span>?
+            </p>
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {[7, 14, 30, 60, 90].map(d => (
+                <button key={d} onClick={() => setCourseEstimateDays(String(d))}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-semibold border transition-colors ${courseEstimateDays === String(d) ? 'bg-[#00A86B] text-white border-[#00A86B]' : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'}`}>
+                  {d < 30 ? `${d} días` : d === 30 ? '1 mes' : d === 60 ? '2 meses' : '3 meses'}
+                </button>
+              ))}
+            </div>
+            <input type="number" placeholder="O escribí la cantidad de días"
+              value={courseEstimateDays} onChange={e => setCourseEstimateDays(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-[#00A86B]" min="1" />
+            <div className="flex gap-2">
+              <button onClick={() => setCourseEstimateModal(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200">
+                Cancelar
+              </button>
+              <button
+                disabled={!courseEstimateDays || parseInt(courseEstimateDays) < 1}
+                onClick={async () => {
+                  const days = parseInt(courseEstimateDays);
+                  const course = courseEstimateModal.course;
+                  setCourseEstimateModal(null);
+                  await handleCourseUpdate(course, 'in_progress', days);
+                }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[#00A86B] text-white disabled:opacity-40">
+                {courseUpdating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
