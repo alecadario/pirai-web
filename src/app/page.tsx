@@ -252,9 +252,6 @@ export default function LandingPage() {
       {/* FINAL CTA */}
       <section className="py-24 px-5 bg-gradient-to-br from-[#00A86B] to-[#1BCDD1] text-white text-center">
         <div className="max-w-2xl mx-auto">
-          <div className="flex justify-center mb-6">
-            <Image src="/pirai-icon.png" alt="Piraí" width={64} height={64} className="rounded-2xl shadow-lg" />
-          </div>
           <h2 className="text-4xl font-extrabold mb-4">¿Empezamos?</h2>
           <p className="text-lg text-white/80 mb-8">
             Unite a cientos de personas que ya organizaron su búsqueda con Piraí.
