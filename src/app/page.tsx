@@ -70,9 +70,8 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Image src="/pirai-logo-color.png" alt="Piraí" width={32} height={32} className="h-8 w-auto object-contain" />
-            <span className="font-bold text-xl text-[#2D3748]">Piraí</span>
+          <div className="flex items-center">
+            <Image src="/pirai-nombre.png" alt="Piraí" width={300} height={300} className="h-9 w-auto object-contain" />
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
             <a href="#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</a>
@@ -109,11 +108,6 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#00A86B]/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 pointer-events-none" />
 
         <div className="relative max-w-4xl mx-auto text-center">
-          {/* NOMBRE logo — color, grande */}
-          <div className="flex justify-center mb-8">
-            <Image src="/pirai-nombre.png" alt="Piraí" width={400} height={400} className="h-16 md:h-20 w-auto object-contain" />
-          </div>
-
           {/* SELECTOR DE PERFIL */}
           <div className="inline-flex bg-white/10 border border-white/20 rounded-2xl p-1 mb-8">
             <button
