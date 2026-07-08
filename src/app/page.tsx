@@ -63,7 +63,8 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Image src="/pirai-nombre.png" alt="Piraí" width={80} height={80} className="h-8 w-auto object-contain" />
+            <Image src="/pirai-logo-color.png" alt="Piraí" width={32} height={32} className="h-8 w-auto object-contain" />
+            <span className="font-bold text-xl text-[#2D3748]">Piraí</span>
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
             <a href="#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</a>
@@ -101,7 +102,7 @@ export default function LandingPage() {
 
         <div className="relative max-w-4xl mx-auto text-center">
           <div className="flex justify-center mb-8">
-            <Image src="/pirai-logo-blanco.png" alt="Piraí" width={80} height={80} className="h-20 w-auto object-contain" />
+            <Image src="/pirai-nombre.png" alt="Piraí" width={300} height={300} className="h-24 w-auto object-contain" style={{filter: 'brightness(0) invert(1)'}} />
           </div>
 
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
