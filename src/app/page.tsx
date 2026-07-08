@@ -63,8 +63,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Image src="/pirai-icon.png" alt="Piraí" width={32} height={32} className="rounded-xl" />
-            <span className="font-bold text-xl text-[#2D3748]">Piraí</span>
+            <Image src="/pirai-nombre.png" alt="Piraí" width={80} height={80} className="h-8 w-auto object-contain" />
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
             <a href="#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</a>
@@ -101,6 +100,10 @@ export default function LandingPage() {
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#00A86B]/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 pointer-events-none" />
 
         <div className="relative max-w-4xl mx-auto text-center">
+          <div className="flex justify-center mb-8">
+            <Image src="/pirai-logo-blanco.png" alt="Piraí" width={80} height={80} className="h-20 w-auto object-contain" />
+          </div>
+
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium mb-6">
             <span className="w-2 h-2 rounded-full bg-[#1BCDD1] animate-pulse" />
             En lanzamiento — unite a los primeros usuarios
@@ -275,8 +278,7 @@ export default function LandingPage() {
       <footer className="bg-[#1A2332] text-white/50 py-10 px-5">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <Image src="/pirai-icon.png" alt="Piraí" width={24} height={24} className="rounded-lg brightness-0 invert opacity-80" />
-            <span className="font-semibold text-white/70">Piraí</span>
+            <Image src="/pirai-nombre.png" alt="Piraí" width={80} height={80} className="h-5 w-auto object-contain brightness-0 invert opacity-70" />
           </div>
           <p>© 2026 Piraí · Hecho con 💚 para quienes buscan trabajo con propósito</p>
           <div className="flex items-center gap-5">
