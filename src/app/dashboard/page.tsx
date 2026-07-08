@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import {
   Loader2, TrendingUp, Users, Activity, Building2,
   Sparkles, RefreshCw, Send, Target, Zap, Play,
-  ChevronRight, AlertCircle, BookOpen, Check,
+  ChevronRight, AlertCircle, BookOpen, CheckCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -248,13 +248,13 @@ function getDailyFocus(
 }
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-  Send: <Send className="w-4 h-4" />,
-  Target: <Target className="w-4 h-4" />,
-  Zap: <Zap className="w-4 h-4" />,
-  Building2: <Building2 className="w-4 h-4" />,
-  Users: <Users className="w-4 h-4" />,
-  Sparkles: <Sparkles className="w-4 h-4" />,
-  Play: <Play className="w-4 h-4" />,
+  Send: <Send className="w-5 h-5" />,
+  Target: <Target className="w-5 h-5" />,
+  Zap: <Zap className="w-5 h-5" />,
+  Building2: <Building2 className="w-5 h-5" />,
+  Users: <Users className="w-5 h-5" />,
+  Sparkles: <Sparkles className="w-5 h-5" />,
+  Play: <Play className="w-5 h-5" />,
 };
 
 const TAG_STYLES: Record<string, { bg: string; border: string; iconBg: string; iconColor: string; tagBg: string; tagColor: string; tagLabel: string }> = {
@@ -570,7 +570,7 @@ export default function DashboardPage() {
                 return done ? (
                   <div key={i} className="flex items-center gap-3 rounded-2xl p-4 bg-gray-50 border border-gray-100 opacity-60">
                     <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#00A86B] flex items-center justify-center">
-                      <Check className="w-5 h-5 text-white" />
+                      <CheckCircle className="w-5 h-5 text-white" />
                     </div>
                     <p className="text-sm font-semibold text-[#718096] line-through truncate flex-1">{action.label}</p>
                   </div>
