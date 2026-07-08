@@ -63,6 +63,7 @@ interface DailyFocus {
   title: string;
   subtitle: string;
   actions: FocusAction[];
+  streak: number;
 }
 
 interface SuggestedCompany {
@@ -229,11 +230,20 @@ function getDailyFocus(
     title = '¡Tu sistema está listo!';
   }
 
+  // Streak: días consecutivos con al menos una actividad
+  const dateSet = new Set(actividades.map(a => a.fecha));
+  let streak = 0;
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    if (dateSet.has(d)) { streak++; } else if (i > 0) break;
+  }
+
   return {
     gradient,
     title,
     subtitle: `${recentActs} actividades esta semana · ${empresas.length} ${isBizUser ? 'prospectos' : 'empresas'} · ${tasaResp}% respuesta`,
     actions,
+    streak,
   };
 }
 
@@ -283,6 +293,8 @@ export default function DashboardPage() {
   const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
   const [courseRecs, setCourseRecs] = useState<Array<{ title: string; platform: string; reason: string; url?: string }>>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const [completedActions, setCompletedActions] = useState<Set<number>>(new Set());
+  const [celebracion, setCelebracion] = useState(false);
 
   const userId = getUserId();
   const name = getUserName()?.split(' ')[0] ?? '';
@@ -411,6 +423,29 @@ export default function DashboardPage() {
 
   const isBizUser = ['emprendedor', 'freelancer', 'empresa'].includes(profileData?.stage ?? '');
 
+  // Restaurar acciones completadas de hoy desde localStorage
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const saved = localStorage.getItem('pirai_completed_actions');
+    if (saved) {
+      try {
+        const { date, indices } = JSON.parse(saved);
+        if (date === today) setCompletedActions(new Set(indices));
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  function markActionDone(index: number, total: number) {
+    const today = new Date().toISOString().split('T')[0];
+    const next = new Set(completedActions).add(index);
+    setCompletedActions(next);
+    localStorage.setItem('pirai_completed_actions', JSON.stringify({ date: today, indices: [...next] }));
+    if (next.size >= total) {
+      setCelebracion(true);
+      setTimeout(() => setCelebracion(false), 3500);
+    }
+  }
+
   const focus = useMemo(() => {
     if (loading) return null;
     return getDailyFocus(empresas, contactos, actividades, profileData);
@@ -483,33 +518,76 @@ export default function DashboardPage() {
 
         {/* TUS ACCIONES DE HOY */}
         <div>
-          <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider mb-4">
-            Tus acciones de hoy
-          </h3>
+          {/* Header con streak y progreso */}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider">
+              Tus acciones de hoy
+            </h3>
+            {focus && focus.streak > 0 && (
+              <span className="flex items-center gap-1 text-xs font-bold text-orange-500">
+                🔥 {focus.streak} {focus.streak === 1 ? 'día' : 'días'} seguidos
+              </span>
+            )}
+          </div>
+          {focus && !loading && (
+            <div className="mb-3">
+              <div className="flex items-center justify-between text-xs text-[#718096] mb-1">
+                <span>{completedActions.size}/{focus.actions.length} completadas</span>
+                {completedActions.size === focus.actions.length && (
+                  <span className="text-[#00A86B] font-semibold">¡Día completo! 🎉</span>
+                )}
+              </div>
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#00A86B] rounded-full transition-all duration-500"
+                  style={{ width: `${focus.actions.length > 0 ? (completedActions.size / focus.actions.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {celebracion && (
+            <div className="mb-3 bg-[#e8f8f4] border border-[#b3e8d8] rounded-2xl p-3 text-center animate-pulse">
+              <p className="text-sm font-bold text-[#00A86B]">🏆 ¡Completaste todas tus acciones de hoy!</p>
+              {focus && focus.streak >= 3 && (
+                <p className="text-xs text-[#00A86B] mt-0.5">Racha de {focus.streak} días — ¡seguí así!</p>
+              )}
+            </div>
+          )}
           {loading ? (
             <div className="space-y-3">
               {[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl h-16 animate-pulse" />)}
             </div>
           ) : focus ? (
             <div className="space-y-3">
-              {focus.actions.map((action, i) => (
-                <Link
-                  key={i}
-                  href={getActionHref(action)}
-                  className={`flex items-center gap-4 rounded-2xl p-4 transition-all hover:shadow-sm ${TAG_STYLES[action.tag]}`}
-                >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm text-[#2D3748]">
-                    {ICON_MAP[action.icon] ?? <Zap className="w-4 h-4" />}
+              {focus.actions.map((action, i) => {
+                const done = completedActions.has(i);
+                return done ? (
+                  <div key={i} className="flex items-center gap-4 rounded-2xl p-4 bg-gray-50 border border-gray-100 opacity-60">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-[#00A86B] flex items-center justify-center shadow-sm">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
+                    <p className="text-sm font-medium text-[#718096] line-through truncate flex-1">{action.label}</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[#2D3748] truncate">{action.label}</p>
-                  </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${TAG_BADGE[action.tag]}`}>
-                    {action.tag}
-                  </span>
-                  <ArrowUpRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
-                </Link>
-              ))}
+                ) : (
+                  <Link
+                    key={i}
+                    href={getActionHref(action)}
+                    onClick={() => markActionDone(i, focus.actions.length)}
+                    className={`flex items-center gap-4 rounded-2xl p-4 transition-all hover:shadow-sm ${TAG_STYLES[action.tag]}`}
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm text-[#2D3748]">
+                      {ICON_MAP[action.icon] ?? <Zap className="w-4 h-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#2D3748] truncate">{action.label}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${TAG_BADGE[action.tag]}`}>
+                      {action.tag}
+                    </span>
+                    <ArrowUpRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
+                  </Link>
+                );
+              })}
 
               {/* Recurso del día / check-in — dentro de las acciones */}
               {coursesLoaded && (() => {
