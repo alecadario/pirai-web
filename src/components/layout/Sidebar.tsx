@@ -26,12 +26,26 @@ export default function Sidebar() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [plan, setPlan] = useState<string | null>(null);
+  const [isBizUser, setIsBizUser] = useState(false);
 
   useEffect(() => {
     setName(getUserName() ?? '');
     setEmail(getUserEmail() ?? '');
     const uid = getUserId();
-    if (uid) fetchQuota(uid).then(q => q && setPlan(q.plan));
+    if (uid) {
+      fetchQuota(uid).then(q => q && setPlan(q.plan));
+      // Check localStorage first for instant render, then confirm with API
+      const cached = typeof window !== 'undefined' ? localStorage.getItem('pirai_stage') : null;
+      if (cached) setIsBizUser(['emprendedor', 'freelancer', 'empresa'].includes(cached));
+      fetch(`/api/user/profile?userId=${encodeURIComponent(uid)}`)
+        .then(r => r.json())
+        .then(p => {
+          const biz = ['emprendedor', 'freelancer', 'empresa'].includes(p.stage ?? '');
+          setIsBizUser(biz);
+          if (typeof window !== 'undefined') localStorage.setItem('pirai_stage', p.stage ?? '');
+        })
+        .catch(() => {});
+    }
   }, []);
 
   function handleLogout() {
@@ -51,7 +65,8 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, label: baseLabel, icon: Icon }) => {
+          const label = href === '/empleos' && isBizUser ? 'Prospectos' : baseLabel;
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
             <Link

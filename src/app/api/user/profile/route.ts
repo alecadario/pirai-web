@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     stage: f.stage || answers.stage || null,
     age_range: f.age_range || answers.age_range || null,
+    genero: f.genero || answers.genero || 'femenino',
     passion: f.passion || answers.passion || '',
     impact: f.impact || answers.impact || '',
     ideal_day: f.ideal_day || answers.ideal_day || '',

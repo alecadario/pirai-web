@@ -8,6 +8,7 @@ import { Loader2, User, Save, CheckCircle } from 'lucide-react';
 interface ProfileData {
   stage: string | null;
   age_range: string | null;
+  genero: string;
   passion: string;
   impact: string;
   ideal_day: string;
@@ -16,7 +17,7 @@ interface ProfileData {
 }
 
 export default function PerfilPage() {
-  const [profile, setProfile] = useState<ProfileData>({ stage: null, age_range: null, passion: '', impact: '', ideal_day: '', services_description: '' });
+  const [profile, setProfile] = useState<ProfileData>({ stage: null, age_range: null, genero: 'femenino', passion: '', impact: '', ideal_day: '', services_description: '' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -47,6 +48,10 @@ export default function PerfilPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, ...profile }),
       });
+      // Store stage so sidebar updates without full reload
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pirai_stage', profile.stage ?? '');
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -123,6 +128,17 @@ export default function PerfilPage() {
                 <option value="25-34">25-34</option>
                 <option value="35-44">35-44</option>
                 <option value="45+">45+</option>
+              </select>
+            </Field>
+
+            <Field label="Género">
+              <select
+                value={profile.genero ?? 'femenino'}
+                onChange={e => setProfile(p => ({ ...p, genero: e.target.value }))}
+                className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+              >
+                <option value="femenino">Mujer</option>
+                <option value="masculino">Hombre</option>
               </select>
             </Field>
           </div>
