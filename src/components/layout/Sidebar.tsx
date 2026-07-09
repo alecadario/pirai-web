@@ -46,6 +46,14 @@ export default function Sidebar() {
         })
         .catch(() => {});
     }
+
+    // React to stage changes from the profile page in the same tab
+    const handleStageChange = (e: Event) => {
+      const stage = (e as CustomEvent<string>).detail;
+      setIsBizUser(['emprendedor', 'freelancer', 'empresa'].includes(stage));
+    };
+    window.addEventListener('pirai:stage-changed', handleStageChange);
+    return () => window.removeEventListener('pirai:stage-changed', handleStageChange);
   }, []);
 
   function handleLogout() {

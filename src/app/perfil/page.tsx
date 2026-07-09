@@ -48,9 +48,10 @@ export default function PerfilPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, ...profile }),
       });
-      // Store stage so sidebar updates without full reload
+      // Store stage and notify sidebar in same tab
       if (typeof window !== 'undefined') {
         localStorage.setItem('pirai_stage', profile.stage ?? '');
+        window.dispatchEvent(new CustomEvent('pirai:stage-changed', { detail: profile.stage ?? '' }));
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
