@@ -561,7 +561,10 @@ export default function DashboardPage() {
               );
             }
 
-            const activeCourse = allCourses.find(c => c.status === 'in_progress' || c.status === 'started');
+            const activeCourse = allCourses.find(c =>
+              (c.status === 'in_progress' || c.status === 'started') &&
+              (!c.reminder_date || c.reminder_date <= today)
+            );
             if (activeCourse) {
               return (
                 <div className="rounded-2xl p-4 bg-amber-50 border border-amber-200 shadow-sm">
