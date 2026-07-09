@@ -108,7 +108,7 @@ export function useAppData() {
             stage = answers.stage ?? '';
           } catch {}
         } else if (fields.genero) {
-          setProfileData((prev: Record<string, unknown>) => ({ ...prev, genero: fields.genero }));
+          setProfileData(prev => ({ ...prev, genero: fields.genero as string }));
         }
         if (fields.diagnosis) diagnosis = fields.diagnosis as string;
         if (fields.stage) stage = fields.stage as string;
