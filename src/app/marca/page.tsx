@@ -1017,7 +1017,7 @@ function CVGenerator({ userId, sharedProfile, sharedPhoto, setSharedPhoto }: {
 }) {
   const [form, setForm] = useState({
     rol: '', empresa: '', empresaId: null as string | null,
-    idioma: 'es', genero: 'femenino',
+    idioma: 'es', genero: (sharedProfile as Record<string, unknown>)?.genero as string || 'femenino',
     jobDescription: '', contexto: '', wantsCoverLetter: false,
     contactName: '', isGeneric: true, colorTheme: 'esmeralda',
   });
@@ -1255,13 +1255,6 @@ function CVGenerator({ userId, sharedProfile, sharedPhoto, setSharedPhoto }: {
             <select value={form.idioma} onChange={e => setForm(p => ({ ...p, idioma: e.target.value }))}
               className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
               <option value="es">Español</option><option value="en">Inglés</option><option value="pt">Portugués</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-[var(--color-brand-muted)] block mb-1.5">Género</label>
-            <select value={form.genero} onChange={e => setForm(p => ({ ...p, genero: e.target.value }))}
-              className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]">
-              <option value="femenino">Femenino</option><option value="masculino">Masculino</option><option value="no_binario">No binario</option>
             </select>
           </div>
         </div>

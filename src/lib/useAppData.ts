@@ -101,10 +101,14 @@ export function useAppData() {
         if (fields.onboarding_answers) {
           try {
             const answers = JSON.parse(fields.onboarding_answers as string);
+            // Columna propia tiene prioridad (puede ser más reciente que el JSON)
+            if (fields.genero) answers.genero = fields.genero as string;
             setProfileData(answers);
             diagnosis = answers.diagnosis ?? '';
             stage = answers.stage ?? '';
           } catch {}
+        } else if (fields.genero) {
+          setProfileData((prev: Record<string, unknown>) => ({ ...prev, genero: fields.genero }));
         }
         if (fields.diagnosis) diagnosis = fields.diagnosis as string;
         if (fields.stage) stage = fields.stage as string;
