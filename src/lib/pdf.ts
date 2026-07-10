@@ -417,6 +417,83 @@ export async function generateCvPDF({
   doc.save(`${combined ? 'CV_CoverLetter' : isCV ? 'CV' : 'CoverLetter'}_${name.replace(/\s/g, '_')}.pdf`);
 }
 
+export function makeCertificadoCodigo(email: string, cursoId: string): string {
+  let hash = 0;
+  const str = `${email}-${cursoId}`;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return `PIRAI-${hash.toString(36).toUpperCase()}`;
+}
+
+export async function generateCertificadoPDF({ nombre, cursoTitulo, fecha, codigo }: {
+  nombre: string;
+  cursoTitulo: string;
+  fecha: string;
+  codigo: string;
+}) {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  const W = 297, H = 210;
+  const ac: [number, number, number] = [0, 168, 107];
+  const dark: [number, number, number] = [26, 35, 50];
+  const safe = (t: unknown) => pdfSafe(t);
+
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, W, H, 'F');
+
+  doc.setDrawColor(...ac);
+  doc.setLineWidth(1.2);
+  doc.rect(10, 10, W - 20, H - 20);
+  doc.setDrawColor(...dark);
+  doc.setLineWidth(0.3);
+  doc.rect(13, 13, W - 26, H - 26);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...ac);
+  doc.text('PIRAÍ', W / 2, 34, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(13);
+  doc.setTextColor(...dark);
+  doc.text('CERTIFICADO DE FINALIZACIÓN', W / 2, 48, { align: 'center' });
+
+  doc.setDrawColor(...ac);
+  doc.setLineWidth(0.5);
+  doc.line(W / 2 - 30, 52, W / 2 + 30, 52);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Se certifica que', W / 2, 74, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(...dark);
+  doc.text(safe(nombre).toUpperCase(), W / 2, 90, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(100, 100, 100);
+  doc.text('completó exitosamente el curso', W / 2, 104, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(...ac);
+  doc.splitTextToSize(safe(cursoTitulo), W - 90).forEach((l: string, i: number) => {
+    doc.text(l, W / 2, 118 + i * 8, { align: 'center' });
+  });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`Emitido el ${safe(fecha)}`, W / 2, H - 30, { align: 'center' });
+  doc.text(`Código: ${safe(codigo)}`, W / 2, H - 24, { align: 'center' });
+
+  doc.save(`Certificado_${safe(cursoTitulo).replace(/\s+/g, '_')}_${safe(nombre).replace(/\s+/g, '_')}.pdf`);
+}
+
 export async function generatePortfolioPDF({ portafolio, userName, userEmail, userLinkedin, servicio }: {
   portafolio: Record<string, unknown>;
   userName?: string | null;
