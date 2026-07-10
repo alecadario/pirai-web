@@ -532,6 +532,7 @@ export default function DashboardPage() {
 
             const reminderCourse = allCourses.find(c =>
               (c.status === 'in_progress' || c.status === 'started') &&
+              c.estimated_days &&
               c.reminder_date && c.reminder_date <= today
             );
             if (reminderCourse) {
@@ -561,9 +562,31 @@ export default function DashboardPage() {
               );
             }
 
+            // Course snoozed with future reminder — show quietly with reminder date
+            const snoozedCourse = allCourses.find(c =>
+              (c.status === 'in_progress' || c.status === 'started') &&
+              c.estimated_days && c.reminder_date && c.reminder_date > today
+            );
+            if (snoozedCourse) {
+              return (
+                <div className="rounded-2xl p-4 bg-[#f0faf6] border border-[#b3e8d8] shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3e8d8] flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-[#00A86B]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3e8d8] text-[#00A86B]">En curso</span>
+                      <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{snoozedCourse.course_title}</p>
+                      <p className="text-xs text-[#718096]">Recordatorio: {snoozedCourse.reminder_date}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             const activeCourse = allCourses.find(c =>
               (c.status === 'in_progress' || c.status === 'started') &&
-              (!c.reminder_date || c.reminder_date <= today)
+              !c.estimated_days
             );
             if (activeCourse) {
               return (
@@ -575,7 +598,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">En curso</span>
                       <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{activeCourse.course_title}</p>
-                      <p className="text-xs text-[#718096]">{activeCourse.platform}{activeCourse.estimated_days ? ` · ${activeCourse.estimated_days} días estimados` : ''}</p>
+                      <p className="text-xs text-[#718096]">{activeCourse.platform}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
