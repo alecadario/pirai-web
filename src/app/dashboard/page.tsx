@@ -288,6 +288,7 @@ export default function DashboardPage() {
   const [clickedCourseTitles, setClickedCourseTitles] = useState<Set<string>>(new Set());
   const [courseUpdating, setCourseUpdating] = useState<string | null>(null);
   const [courseRecs, setCourseRecs] = useState<Array<{ title: string; platform: string; reason: string; url?: string }>>([]);
+  const [curatedCourses, setCuratedCourses] = useState<Array<{ title: string; platform: string; url?: string; free?: boolean; tags?: string[]; description?: string }>>([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [courseEstimateModal, setCourseEstimateModal] = useState<{ course: CourseProgress } | null>(null);
   const [courseEstimateDays, setCourseEstimateDays] = useState('');
@@ -372,7 +373,8 @@ export default function DashboardPage() {
       Promise.all([
         fetch(`/api/course-progress?userId=${userId}`).then(r => r.json()).catch(() => ({ courses: [] })),
         fetch(`/api/user-record?userId=${userId}`).then(r => r.json()).catch(() => ({})),
-      ]).then(([cpData, userData]) => {
+        fetch('/api/courses').then(r => r.json()).catch(() => ({ courses: [] })),
+      ]).then(([cpData, userData, coursesData]) => {
         const all = cpData.courses || [];
         setAllCourses(all);
         setClickedCourseTitles(new Set(all.map((c: CourseProgress) => c.course_title.toLowerCase())));
@@ -380,6 +382,7 @@ export default function DashboardPage() {
         if (analysis) {
           try { setCourseRecs(JSON.parse(analysis)?.course_recommendations || []); } catch { /* */ }
         }
+        setCuratedCourses(coursesData.courses || []);
         setCoursesLoaded(true);
       });
     }
@@ -528,7 +531,6 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl h-24 animate-pulse" />
           ) : coursesLoaded ? (() => {
             const today = new Date().toISOString().split('T')[0];
-            const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
 
             const reminderCourse = allCourses.find(c =>
               (c.status === 'in_progress' || c.status === 'started') &&
@@ -562,7 +564,7 @@ export default function DashboardPage() {
               );
             }
 
-            // Course snoozed with future reminder — show quietly with reminder date
+            // Course snoozed with active future reminder — show quietly
             const snoozedCourse = allCourses.find(c =>
               (c.status === 'in_progress' || c.status === 'started') &&
               c.estimated_days && c.reminder_date && c.reminder_date > today
@@ -621,48 +623,6 @@ export default function DashboardPage() {
               );
             }
 
-            const recentCourse = allCourses.find(c =>
-              ['completed', 'skipped', 'in_progress'].includes(c.status) &&
-              (c.started_at || '') >= thirtyDaysAgo
-            );
-            if (recentCourse) {
-              const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
-              if (!nextRec) return null;
-              return (
-                <div className="rounded-2xl p-4 bg-[#e8f6fd] border border-[#b3ddf0] shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3ddf0] flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-[#0fa8ac]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3ddf0] text-[#0fa8ac]">Recurso</span>
-                      <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
-                      <p className="text-xs text-[#718096]">{nextRec.platform}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
-                  </div>
-                </div>
-              );
-            }
-
-            const nextRec = courseRecs.find(c => !clickedCourseTitles.has(c.title.toLowerCase()));
-            if (nextRec) {
-              const href = `https://www.google.com/search?q=${encodeURIComponent(nextRec.title)}+${encodeURIComponent(nextRec.platform)}+curso`;
-              return (
-                <button onClick={() => handleCourseClick(nextRec.title, nextRec.platform, href, '')}
-                  className="w-full flex items-center gap-3 rounded-2xl p-4 bg-[#e8f8f4] border border-[#b3e8d8] hover:shadow-sm transition-all text-left shadow-sm">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#b3e8d8] flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-[#00A86B]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#b3e8d8] text-[#00A86B]">Curso del mes</span>
-                    <p className="text-sm font-semibold text-[#2D3748] mt-0.5 truncate">{nextRec.title}</p>
-                    <p className="text-xs text-[#718096]">{nextRec.platform}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#718096] flex-shrink-0" />
-                </button>
-              );
-            }
             return null;
           })() : null}
         </div>
@@ -691,6 +651,52 @@ export default function DashboardPage() {
           </div>
         )}
 
+
+        {/* RECOMENDACIONES PARA CRECER */}
+        {coursesLoaded && courseRecs.length > 0 && (() => {
+          const visible = courseRecs.filter(c => !clickedCourseTitles.has(c.title.toLowerCase()));
+          if (visible.length === 0) return null;
+          return (
+            <div>
+              <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider mb-3">Recomendaciones para crecer</h3>
+              <div className="space-y-2">
+                {visible.map((c, i) => {
+                  const curated = curatedCourses.find(cc =>
+                    cc.title.toLowerCase().includes(c.title.toLowerCase().slice(0, 10)) ||
+                    c.title.toLowerCase().includes(cc.title.toLowerCase().slice(0, 10))
+                  );
+                  const href = curated?.url || `https://www.google.com/search?q=${encodeURIComponent(c.title)}+${encodeURIComponent(c.platform)}+curso`;
+                  const courseTitle = curated?.title || c.title;
+                  return (
+                    <button key={i} onClick={() => handleCourseClick(courseTitle, c.platform, href, curated?.tags?.join(', ') || '')}
+                      className="w-full flex items-start gap-3 rounded-2xl p-4 bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] hover:bg-[var(--color-pirai-100)] transition-colors text-left">
+                      <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[var(--color-pirai-100)] flex items-center justify-center mt-0.5">
+                        <BookOpen className="w-4 h-4 text-[#00A86B]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-[#2D3748]">{courseTitle}</p>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {curated?.free && <span className="text-[9px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Gratis</span>}
+                            <span className="text-[10px] font-bold bg-[var(--color-pirai-100)] text-[#00A86B] px-2 py-0.5 rounded-full">{c.platform}</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-[#718096] mt-0.5">{curated?.description || c.reason}</p>
+                        {(curated?.tags?.length ?? 0) > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {curated!.tags!.slice(0, 3).map(tag => (
+                              <span key={tag} className="text-[9px] bg-white text-[#00A86B] border border-[var(--color-pirai-200)] px-1.5 py-0.5 rounded-full">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* EMPRESAS SUGERIDAS */}
         <div>

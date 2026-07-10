@@ -535,72 +535,6 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
         </div>
       )}
 
-      {/* Cursos y certificaciones */}
-      {(completedCourses.length > 0 || certifications.length > 0) && (
-        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
-            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación y certificaciones</p>
-            <span className="text-[10px] bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full font-semibold ml-auto">Suma al CV con IA ✨</span>
-          </div>
-          <div className="space-y-3">
-            {completedCourses.map(course => (
-              <div key={course.id} className="border border-[var(--color-brand-border)] rounded-xl p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--color-brand-dark)]">{course.course_title}</p>
-                    <p className="text-xs text-[var(--color-brand-muted)] mt-0.5">{course.platform}{course.completed_at ? ` · ${new Date(course.completed_at).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })}` : ''}</p>
-                  </div>
-                  {course.url && (
-                    <a href={course.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-[var(--color-pirai-600)] hover:underline shrink-0">Ver curso →</a>
-                  )}
-                </div>
-                {course.description && (
-                  <p className="text-xs text-[var(--color-brand-muted)] mt-1.5 leading-relaxed">{course.description}</p>
-                )}
-                {course.tags && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {course.tags.split(',').filter(t => t.trim()).map(tag => (
-                      <span key={tag} className="text-[9px] bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-1.5 py-0.5 rounded-full">{tag.trim()}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-            {certifications.map(cert => (
-              <div key={cert.id} className="border border-[var(--color-brand-border)] rounded-xl p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--color-brand-dark)]">{cert.name}</p>
-                    <p className="text-xs text-[var(--color-brand-muted)] mt-0.5">{[cert.institution, cert.date].filter(Boolean).join(' · ')}</p>
-                  </div>
-                </div>
-                {cert.description && (
-                  <p className="text-xs text-[var(--color-brand-muted)] mt-1.5 leading-relaxed">{cert.description}</p>
-                )}
-              </div>
-            ))}
-          </div>
-          <button onClick={onAddCert}
-            className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--color-pirai-600)] border border-dashed border-[var(--color-pirai-300)] rounded-xl py-2 hover:bg-[var(--color-pirai-50)] transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Agregar certificación externa
-          </button>
-        </div>
-      )}
-      {completedCourses.length === 0 && certifications.length === 0 && (
-        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
-            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación y certificaciones</p>
-          </div>
-          <p className="text-xs text-[var(--color-brand-muted)] mb-3">Completá cursos de Pirai o agregá certificaciones externas para que la IA las incluya en tu CV.</p>
-          <button onClick={onAddCert}
-            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--color-pirai-600)] border border-dashed border-[var(--color-pirai-300)] rounded-xl py-2 hover:bg-[var(--color-pirai-50)] transition-colors">
-            <Plus className="w-3.5 h-3.5" /> Agregar certificación externa
-          </button>
-        </div>
-      )}
-
       {/* Lo que sabemos */}
       {profileAnalysis?.lo_que_sabemos && (
         <div className="bg-gradient-to-r from-[var(--color-pirai-50)] to-[var(--color-pirai-50)] border border-[var(--color-pirai-200)] rounded-2xl p-4">
@@ -689,71 +623,6 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
             </div>
           )}
 
-          {/* Course recommendations */}
-          {profileAnalysis.course_recommendations && profileAnalysis.course_recommendations.length > 0 && (() => {
-            const visible = profileAnalysis.course_recommendations.filter(c => {
-              const curated = matchCuratedCourse(c.title, c.platform, curatedCourses);
-              const title = (curated?.title || c.title).toLowerCase();
-              return !clickedCourseTitles.has(title);
-            });
-            if (visible.length === 0) return null;
-            return (
-            <div>
-              <p className="text-[10px] font-semibold text-gray-500 uppercase mb-2">Recomendaciones para crecer</p>
-              <div className="space-y-2">
-                {visible.map((c, i) => {
-                  const curated = matchCuratedCourse(c.title, c.platform, curatedCourses);
-                  const href = curated?.url || getPlatformSearchUrl(c.title, c.platform);
-                  const isCurated = !!curated?.url;
-                  const courseTitle = curated?.title || c.title;
-                  return (
-                    <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                      onClick={async (e) => {
-                        if (!userId) return;
-                        e.preventDefault();
-                        onCourseClicked(courseTitle);
-                        try {
-                          await fetch('/api/course-progress', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              userId,
-                              course_title: courseTitle,
-                              platform: c.platform,
-                              url: href,
-                              tags: curated?.tags?.join(', ') || '',
-                            }),
-                          });
-                        } catch { /* silent */ }
-                        window.open(href, '_blank', 'noopener,noreferrer');
-                      }}
-                      className="block bg-[var(--color-pirai-50)] border border-[var(--color-pirai-100)] rounded-xl px-3 py-2.5 hover:bg-[var(--color-pirai-100)] transition-colors group">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-xs font-semibold text-[var(--color-pirai-800)] group-hover:underline">
-                          {curated?.title || c.title}
-                        </p>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {curated?.free && <span className="text-[9px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Gratis</span>}
-                          {isCurated && <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">✓ Curado</span>}
-                          <span className="text-[10px] font-bold bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full">{c.platform}</span>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-[var(--color-pirai-600)] mt-0.5">{curated?.description || c.reason}</p>
-                      {(curated?.tags?.length ?? 0) > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {curated?.tags.slice(0, 3).map(tag => (
-                            <span key={tag} className="text-[9px] bg-white text-[var(--color-pirai-500)] border border-[var(--color-pirai-200)] px-1.5 py-0.5 rounded-full">{tag}</span>
-                          ))}
-                        </div>
-                      )}
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-            );
-          })()}
-
           {/* Re-analyze */}
           <button
             onClick={handleAnalyze}
@@ -807,6 +676,72 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
       )}
 
       {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {/* Cursos y certificaciones */}
+      {(completedCourses.length > 0 || certifications.length > 0) && (
+        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
+          <div className="flex items-center gap-2 mb-4">
+            <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
+            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación y certificaciones</p>
+            <span className="text-[10px] bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full font-semibold ml-auto">Suma al CV con IA ✨</span>
+          </div>
+          <div className="space-y-3">
+            {completedCourses.map(course => (
+              <div key={course.id} className="border border-[var(--color-brand-border)] rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--color-brand-dark)]">{course.course_title}</p>
+                    <p className="text-xs text-[var(--color-brand-muted)] mt-0.5">{course.platform}{course.completed_at ? ` · ${new Date(course.completed_at).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })}` : ''}</p>
+                  </div>
+                  {course.url && (
+                    <a href={course.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-semibold text-[var(--color-pirai-600)] hover:underline shrink-0">Ver curso →</a>
+                  )}
+                </div>
+                {course.description && (
+                  <p className="text-xs text-[var(--color-brand-muted)] mt-1.5 leading-relaxed">{course.description}</p>
+                )}
+                {course.tags && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {course.tags.split(',').filter(t => t.trim()).map(tag => (
+                      <span key={tag} className="text-[9px] bg-[var(--color-pirai-100)] text-[var(--color-pirai-600)] px-1.5 py-0.5 rounded-full">{tag.trim()}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {certifications.map(cert => (
+              <div key={cert.id} className="border border-[var(--color-brand-border)] rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--color-brand-dark)]">{cert.name}</p>
+                    <p className="text-xs text-[var(--color-brand-muted)] mt-0.5">{[cert.institution, cert.date].filter(Boolean).join(' · ')}</p>
+                  </div>
+                </div>
+                {cert.description && (
+                  <p className="text-xs text-[var(--color-brand-muted)] mt-1.5 leading-relaxed">{cert.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+          <button onClick={onAddCert}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--color-pirai-600)] border border-dashed border-[var(--color-pirai-300)] rounded-xl py-2 hover:bg-[var(--color-pirai-50)] transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Agregar certificación externa
+          </button>
+        </div>
+      )}
+      {completedCourses.length === 0 && certifications.length === 0 && (
+        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
+            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación y certificaciones</p>
+          </div>
+          <p className="text-xs text-[var(--color-brand-muted)] mb-3">Completá cursos de Pirai o agregá certificaciones externas para que la IA las incluya en tu CV.</p>
+          <button onClick={onAddCert}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--color-pirai-600)] border border-dashed border-[var(--color-pirai-300)] rounded-xl py-2 hover:bg-[var(--color-pirai-50)] transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Agregar certificación externa
+          </button>
+        </div>
+      )}
 
       {/* Documentos / CV */}
       <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
