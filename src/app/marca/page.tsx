@@ -3,7 +3,7 @@
 import AppShell from '@/components/layout/AppShell';
 import { useState, useEffect } from 'react';
 import { getUserId } from '@/lib/auth';
-import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X, Mail, Send, Award } from 'lucide-react';
+import { Loader2, Sparkles, FileText, Copy, CheckCircle, RefreshCw, Pencil, User, Upload, Camera, X, Mail, Send, Award, Plus } from 'lucide-react';
 import { generateCvPDF, cropImageToCircle } from '@/lib/pdf';
 
 
@@ -62,6 +62,10 @@ export default function MarcaPage() {
   const [curatedCourses, setCuratedCourses] = useState<CuratedCourse[]>([]);
   const [completedCourses, setCompletedCourses] = useState<CompletedCourse[]>([]);
   const [clickedCourseTitles, setClickedCourseTitles] = useState<Set<string>>(new Set());
+  const [certifications, setCertifications] = useState<Array<{ id: number; name: string; institution: string; date: string; description: string }>>([]);
+  const [certModal, setCertModal] = useState(false);
+  const [certForm, setCertForm] = useState({ name: '', institution: '', date: '', description: '' });
+  const [certSaving, setCertSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/courses').then(r => r.json()).then(d => {
@@ -74,8 +78,31 @@ export default function MarcaPage() {
         setCompletedCourses(done);
         setClickedCourseTitles(new Set(all.map((c: { course_title: string }) => c.course_title.toLowerCase())));
       }).catch(() => {});
+      fetch(`/api/user/profile?userId=${userId}`).then(r => r.json()).then(p => {
+        if (p.certifications) {
+          try { setCertifications(JSON.parse(p.certifications)); } catch {}
+        }
+      }).catch(() => {});
     }
   }, [userId]);
+
+  const saveCertification = async () => {
+    if (!certForm.name.trim() || !userId) return;
+    setCertSaving(true);
+    const newCert = { name: certForm.name.trim(), institution: certForm.institution.trim(), date: certForm.date, description: certForm.description.trim(), id: Date.now() };
+    const updated = [...certifications, newCert];
+    setCertifications(updated);
+    setCertModal(false);
+    setCertForm({ name: '', institution: '', date: '', description: '' });
+    try {
+      await fetch('/api/user/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, certifications: JSON.stringify(updated) }),
+      });
+    } catch {}
+    setCertSaving(false);
+  };
 
   const TABS = [
     { id: 'perfil' as Tab, label: 'Mi Perfil', icon: User },
@@ -120,6 +147,8 @@ export default function MarcaPage() {
               completedCourses={completedCourses}
               clickedCourseTitles={clickedCourseTitles}
               onCourseClicked={(title) => setClickedCourseTitles(prev => new Set([...prev, title.toLowerCase()]))}
+              certifications={certifications}
+              onAddCert={() => setCertModal(true)}
             />
           )}
           {tab === 'cv' && (
@@ -132,6 +161,40 @@ export default function MarcaPage() {
           )}
         </div>
       </div>
+
+      {/* Modal certificación externa */}
+      {certModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[var(--color-brand-dark)]">Agregar certificación</h3>
+              <button onClick={() => setCertModal(false)}><X className="w-4 h-4 text-gray-400" /></button>
+            </div>
+            <div className="space-y-3 mb-5">
+              <input type="text" placeholder="Nombre del curso o certificación *" value={certForm.name}
+                onChange={e => setCertForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <input type="text" placeholder="Institución / plataforma" value={certForm.institution}
+                onChange={e => setCertForm(f => ({ ...f, institution: e.target.value }))}
+                className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <input type="text" placeholder="Fecha (ej: Mar 2025)" value={certForm.date}
+                onChange={e => setCertForm(f => ({ ...f, date: e.target.value }))}
+                className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
+              <textarea placeholder="¿Qué temas o habilidades cubrió? (opcional, ayuda a la IA)" value={certForm.description}
+                onChange={e => setCertForm(f => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="w-full border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] resize-none" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setCertModal(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--color-brand-gray)] text-[var(--color-brand-muted)]">Cancelar</button>
+              <button disabled={!certForm.name.trim() || certSaving} onClick={saveCertification}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--color-pirai-500)] text-white disabled:opacity-40">
+                {certSaving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
@@ -170,7 +233,7 @@ function matchCuratedCourse(title: string, platform: string, curated: CuratedCou
   return best || null;
 }
 
-function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto, curatedCourses, completedCourses, clickedCourseTitles, onCourseClicked }: {
+function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setSharedCvText, sharedPhoto, setSharedPhoto, curatedCourses, completedCourses, clickedCourseTitles, onCourseClicked, certifications, onAddCert }: {
   userId: string | null;
   sharedProfile: ProfileData;
   setSharedProfile: React.Dispatch<React.SetStateAction<ProfileData>>;
@@ -182,6 +245,8 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
   completedCourses: CompletedCourse[];
   clickedCourseTitles: Set<string>;
   onCourseClicked: (title: string) => void;
+  certifications: Array<{ id: number; name: string; institution: string; date: string; description: string }>;
+  onAddCert: () => void;
 }) {
   const profileData = sharedProfile;
   const setProfileData = setSharedProfile;
@@ -470,12 +535,12 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
         </div>
       )}
 
-      {/* Cursos y recursos completados */}
-      {completedCourses.length > 0 && (
+      {/* Cursos y certificaciones */}
+      {(completedCourses.length > 0 || certifications.length > 0) && (
         <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
-            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación completada</p>
+            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación y certificaciones</p>
             <span className="text-[10px] bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full font-semibold ml-auto">Suma al CV con IA ✨</span>
           </div>
           <div className="space-y-3">
@@ -502,7 +567,37 @@ function PerfilTab({ userId, sharedProfile, setSharedProfile, sharedCvText, setS
                 )}
               </div>
             ))}
+            {certifications.map(cert => (
+              <div key={cert.id} className="border border-[var(--color-brand-border)] rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[var(--color-brand-dark)]">{cert.name}</p>
+                    <p className="text-xs text-[var(--color-brand-muted)] mt-0.5">{[cert.institution, cert.date].filter(Boolean).join(' · ')}</p>
+                  </div>
+                </div>
+                {cert.description && (
+                  <p className="text-xs text-[var(--color-brand-muted)] mt-1.5 leading-relaxed">{cert.description}</p>
+                )}
+              </div>
+            ))}
           </div>
+          <button onClick={onAddCert}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--color-pirai-600)] border border-dashed border-[var(--color-pirai-300)] rounded-xl py-2 hover:bg-[var(--color-pirai-50)] transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Agregar certificación externa
+          </button>
+        </div>
+      )}
+      {completedCourses.length === 0 && certifications.length === 0 && (
+        <div className="bg-white rounded-2xl p-5 border border-[var(--color-brand-border)] shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <Award className="w-4 h-4 text-[var(--color-pirai-500)]" />
+            <p className="text-sm font-semibold text-[var(--color-brand-dark)]">Formación y certificaciones</p>
+          </div>
+          <p className="text-xs text-[var(--color-brand-muted)] mb-3">Completá cursos de Pirai o agregá certificaciones externas para que la IA las incluya en tu CV.</p>
+          <button onClick={onAddCert}
+            className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--color-pirai-600)] border border-dashed border-[var(--color-pirai-300)] rounded-xl py-2 hover:bg-[var(--color-pirai-50)] transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Agregar certificación externa
+          </button>
         </div>
       )}
 

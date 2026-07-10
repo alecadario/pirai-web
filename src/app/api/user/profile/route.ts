@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     ideal_day: f.ideal_day || answers.ideal_day || '',
     services_description: f.services_description || answers.services_description || '',
     fullName: f.name || f.fullName || answers.fullName || '',
+    certifications: f.certifications || null,
   });
 }
 
