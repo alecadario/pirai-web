@@ -34,6 +34,7 @@ export async function GET() {
       hora: r.fields.hora || '',
       speaker: r.fields.speaker || '',
       speaker_bio: r.fields.speaker_bio || '',
+      speaker_linkedin: r.fields.speaker_linkedin || '',
       link_zoom: r.fields.link_zoom || '',
       grabacion_url: r.fields.grabacion_url || '',
       tags: r.fields.tags || '',
@@ -53,13 +54,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if already registered
-    const checkParams = new URLSearchParams({
-      filterByFormula: `AND({email}="${email}", {webinar_id}="${webinar_id}")`,
-      maxRecords: '1',
-    });
-    const existing = await at(`/${encodeURIComponent('WebinarRegistrations')}?${checkParams}`);
-    if (existing.records?.length > 0) {
-      return NextResponse.json({ ok: true, already: true });
+    try {
+      const checkParams = new URLSearchParams({
+        filterByFormula: `AND({email}="${email}", {webinar_id}="${webinar_id}")`,
+        maxRecords: '1',
+      });
+      const existing = await at(`/${encodeURIComponent('WebinarRegistrations')}?${checkParams}`);
+      if (existing.records?.length > 0) {
+        return NextResponse.json({ ok: true, already: true });
+      }
+    } catch {
+      // duplicate check failed — proceed to create rather than silently drop the registration
     }
 
     await at(`/${encodeURIComponent('WebinarRegistrations')}`, {
@@ -72,6 +77,7 @@ export async function POST(req: NextRequest) {
           webinar_titulo,
           fecha_registro: new Date().toISOString(),
         },
+        typecast: true,
       }),
     });
     return NextResponse.json({ ok: true });
