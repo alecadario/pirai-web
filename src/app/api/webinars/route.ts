@@ -35,6 +35,7 @@ export async function GET() {
       speaker: r.fields.speaker || '',
       speaker_bio: r.fields.speaker_bio || '',
       speaker_linkedin: r.fields.speaker_linkedin || '',
+      google_calendar_url: r.fields.google_calendar_url || '',
       link_zoom: r.fields.link_zoom || '',
       grabacion_url: r.fields.grabacion_url || '',
       tags: r.fields.tags || '',
