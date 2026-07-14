@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Circle, Loader2, Award, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, Award, ChevronLeft, AlertTriangle } from 'lucide-react';
 import { getYouTubeId, loadYouTubeAPI, type YTPlayer } from '@/lib/youtube';
 import { generateCertificadoPDF, makeCertificadoCodigo } from '@/lib/pdf';
 
@@ -32,12 +32,15 @@ export default function CursoDetallePage() {
 
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
+  const [formNombre, setFormNombre] = useState('');
+  const [formEmail, setFormEmail] = useState('');
   const [showEnrollForm, setShowEnrollForm] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
 
   const [completadas, setCompletadas] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState(false);
 
   const playerRef = useRef<YTPlayer | null>(null);
   const selectedIdRef = useRef<string | null>(null);
@@ -59,36 +62,39 @@ export default function CursoDetallePage() {
     }).finally(() => setLoadingCurso(false));
   }, [id]);
 
+  // Enroll (or confirm existing enrollment) + load progress — called once with a confirmed identity
+  async function enrollAndLoad(confirmedNombre: string, confirmedEmail: string, cursoId: string) {
+    emailRef.current = confirmedEmail;
+    setNombre(confirmedNombre);
+    setEmail(confirmedEmail);
+    localStorage.setItem('pirai_cursos_nombre', confirmedNombre);
+    localStorage.setItem('pirai_cursos_email', confirmedEmail);
+
+    const insc = await fetch(`/api/inscripciones?email=${encodeURIComponent(confirmedEmail)}&curso_id=${cursoId}`).then(r => r.json());
+    if (!insc.inscripto) {
+      await fetch('/api/inscripciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: confirmedNombre, email: confirmedEmail, curso_id: cursoId }),
+      });
+    }
+    const prog = await fetch(`/api/progreso?email=${encodeURIComponent(confirmedEmail)}&curso_id=${cursoId}`).then(r => r.json());
+    setCompletadas(new Set<string>(prog.leccionesVistas || []));
+    setEnrolled(true);
+  }
+
   // Figure out who's watching
   useEffect(() => {
+    if (!id) return;
     const storedEmail = localStorage.getItem('pirai_cursos_email');
     const storedNombre = localStorage.getItem('pirai_cursos_nombre');
     if (storedEmail && storedNombre) {
-      setNombre(storedNombre);
-      setEmail(storedEmail);
+      enrollAndLoad(storedNombre, storedEmail, id);
     } else {
       setShowEnrollForm(true);
     }
-  }, []);
-
-  // Enroll (or confirm existing enrollment) + load progress
-  useEffect(() => {
-    if (!email || !id) return;
-    emailRef.current = email;
-    (async () => {
-      const insc = await fetch(`/api/inscripciones?email=${encodeURIComponent(email)}&curso_id=${id}`).then(r => r.json());
-      if (!insc.inscripto) {
-        await fetch('/api/inscripciones', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre, email, curso_id: id }),
-        });
-      }
-      const prog = await fetch(`/api/progreso?email=${encodeURIComponent(email)}&curso_id=${id}`).then(r => r.json());
-      setCompletadas(new Set<string>(prog.leccionesVistas || []));
-      setEnrolled(true);
-    })();
-  }, [email, id, nombre]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -111,6 +117,7 @@ export default function CursoDetallePage() {
     if (!enrolled || !selectedId) return;
     const leccion = lecciones.find(l => l.id === selectedId);
     const videoId = leccion ? getYouTubeId(leccion.video_url) : null;
+    setVideoError(!videoId);
     if (!videoId) return;
 
     loadYouTubeAPI().then(() => {
@@ -128,6 +135,7 @@ export default function CursoDetallePage() {
               marcarCompletada(selectedIdRef.current);
             }
           },
+          onError: () => setVideoError(true),
         },
       });
     });
@@ -139,10 +147,9 @@ export default function CursoDetallePage() {
   }, []);
 
   async function handleEnroll() {
-    if (!nombre.trim() || !email.trim()) return;
+    if (!formNombre.trim() || !formEmail.trim() || !id) return;
     setEnrolling(true);
-    localStorage.setItem('pirai_cursos_nombre', nombre.trim());
-    localStorage.setItem('pirai_cursos_email', email.trim());
+    await enrollAndLoad(formNombre.trim(), formEmail.trim(), id);
     setShowEnrollForm(false);
     setEnrolling(false);
   }
@@ -203,8 +210,15 @@ export default function CursoDetallePage() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
             {/* Player */}
             <div className="bg-white rounded-3xl border border-[#E2E8F0] p-5">
-              <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
+              <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black relative">
                 <div id="yt-curso-player" className="w-full h-full" />
+                {videoError && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-6 bg-black/90">
+                    <AlertTriangle className="w-6 h-6 text-amber-400" />
+                    <p className="text-white text-sm font-medium">No pudimos cargar este video.</p>
+                    <p className="text-white/60 text-xs">Revisá que el link de YouTube sea válido y permita insertarse (embed) en otros sitios.</p>
+                  </div>
+                )}
               </div>
               {selectedLeccion && (
                 <div className="mt-4">
@@ -283,8 +297,8 @@ export default function CursoDetallePage() {
                 <input
                   className="w-full border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#00A86B]"
                   placeholder="Ej: Ana García"
-                  value={nombre}
-                  onChange={e => setNombre(e.target.value)}
+                  value={formNombre}
+                  onChange={e => setFormNombre(e.target.value)}
                 />
               </div>
               <div>
@@ -293,13 +307,13 @@ export default function CursoDetallePage() {
                   className="w-full border border-[#E2E8F0] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#00A86B]"
                   placeholder="Ej: ana@email.com"
                   type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  value={formEmail}
+                  onChange={e => setFormEmail(e.target.value)}
                 />
               </div>
               <button
                 onClick={handleEnroll}
-                disabled={enrolling || !nombre.trim() || !email.trim()}
+                disabled={enrolling || !formNombre.trim() || !formEmail.trim()}
                 className="w-full flex items-center justify-center gap-2 bg-[#00A86B] text-white font-semibold py-3 rounded-xl hover:bg-[#009660] transition-colors disabled:opacity-50"
               >
                 {enrolling ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Empezar curso'}
