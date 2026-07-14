@@ -10,11 +10,14 @@ function atHeaders() {
 async function at(path: string, options: RequestInit = {}) {
   const r = await fetch(`https://api.airtable.com/v0/${AT_BASE}${path}`, {
     ...options,
+    cache: 'no-store',
     headers: { ...atHeaders(), ...(options.headers as Record<string, string> || {}) },
   });
   if (!r.ok) throw new Error(`Airtable ${r.status}: ${await r.text()}`);
   return r.json();
 }
+
+export const dynamic = 'force-dynamic';
 
 // GET /api/cursos — list active courses
 export async function GET() {
