@@ -75,8 +75,10 @@ function isPast(fecha: string) {
   return new Date(fecha + 'T23:59:59') < new Date();
 }
 
-function webinarTimes(w: Webinar) {
+function webinarTimes(w: Webinar): { start: Date; end: Date } | null {
+  if (!w.fecha) return null;
   const start = new Date(`${w.fecha}T${w.hora || '19:00'}:00`);
+  if (isNaN(start.getTime())) return null;
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   return { start, end };
 }
@@ -85,13 +87,14 @@ function icsDate(d: Date) {
   return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 }
 
-function googleCalendarUrl(w: Webinar) {
-  const { start, end } = webinarTimes(w);
+function googleCalendarUrl(w: Webinar): string | null {
+  const times = webinarTimes(w);
+  if (!times) return null;
   const details = w.descripcion + (w.link_zoom ? `\n\nLink de acceso: ${w.link_zoom}` : '');
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: w.titulo,
-    dates: `${icsDate(start)}/${icsDate(end)}`,
+    dates: `${icsDate(times.start)}/${icsDate(times.end)}`,
     details,
     location: w.link_zoom || '',
   });
@@ -99,7 +102,8 @@ function googleCalendarUrl(w: Webinar) {
 }
 
 function downloadIcs(w: Webinar) {
-  const { start, end } = webinarTimes(w);
+  const times = webinarTimes(w);
+  if (!times) return;
   const details = (w.descripcion + (w.link_zoom ? `\\nLink de acceso: ${w.link_zoom}` : '')).replace(/\n/g, '\\n');
   const ics = [
     'BEGIN:VCALENDAR',
@@ -107,8 +111,8 @@ function downloadIcs(w: Webinar) {
     'BEGIN:VEVENT',
     `UID:${w.id}@pirai.es`,
     `DTSTAMP:${icsDate(new Date())}`,
-    `DTSTART:${icsDate(start)}`,
-    `DTEND:${icsDate(end)}`,
+    `DTSTART:${icsDate(times.start)}`,
+    `DTEND:${icsDate(times.end)}`,
     `SUMMARY:${w.titulo}`,
     `DESCRIPTION:${details}`,
     w.link_zoom ? `LOCATION:${w.link_zoom}` : '',
@@ -331,22 +335,33 @@ export default function WebinarsPage() {
                   <CheckCircle className="w-12 h-12 text-[#00A86B] mx-auto mb-3" />
                   <p className="font-bold text-[#2D3748] text-lg mb-1">¡Ya estás anotado/a! 🎉</p>
                   <p className="text-sm text-[#718096]">Te enviamos los detalles a <strong>{email}</strong>. ¡Nos vemos en el webinar!</p>
-                  <div className="flex items-center justify-center gap-2 mt-5">
-                    <a
-                      href={modal.google_calendar_url || googleCalendarUrl(modal)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs font-semibold bg-[#F2F4F7] text-[#2D3748] px-3 py-2 rounded-xl hover:bg-gray-200 transition-colors"
-                    >
-                      <CalendarPlus className="w-3.5 h-3.5" /> Google Calendar
-                    </a>
-                    <button
-                      onClick={() => downloadIcs(modal)}
-                      className="flex items-center gap-1.5 text-xs font-semibold bg-[#F2F4F7] text-[#2D3748] px-3 py-2 rounded-xl hover:bg-gray-200 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Outlook / Apple (.ics)
-                    </button>
-                  </div>
+                  {(() => {
+                    const calUrl = modal.google_calendar_url || googleCalendarUrl(modal);
+                    const hasValidTimes = !!webinarTimes(modal);
+                    if (!calUrl && !hasValidTimes) return null;
+                    return (
+                      <div className="flex items-center justify-center gap-2 mt-5">
+                        {calUrl && (
+                          <a
+                            href={calUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs font-semibold bg-[#F2F4F7] text-[#2D3748] px-3 py-2 rounded-xl hover:bg-gray-200 transition-colors"
+                          >
+                            <CalendarPlus className="w-3.5 h-3.5" /> Google Calendar
+                          </a>
+                        )}
+                        {hasValidTimes && (
+                          <button
+                            onClick={() => downloadIcs(modal)}
+                            className="flex items-center gap-1.5 text-xs font-semibold bg-[#F2F4F7] text-[#2D3748] px-3 py-2 rounded-xl hover:bg-gray-200 transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Outlook / Apple (.ics)
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <button onClick={() => setModal(null)} className="mt-4 text-sm font-semibold text-[#00A86B] hover:underline">
                     Cerrar
                   </button>
