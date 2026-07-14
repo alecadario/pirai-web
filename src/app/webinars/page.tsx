@@ -14,6 +14,7 @@ interface Webinar {
   speaker: string;
   speaker_bio: string;
   speaker_linkedin: string;
+  google_calendar_url: string;
   link_zoom: string;
   grabacion_url: string;
   tags: string;
@@ -29,6 +30,7 @@ const PLACEHOLDER_WEBINARS: Webinar[] = [
     speaker: 'Ale Cadario',
     speaker_bio: 'CEO de Piraí, ex-reclutadora y especialista en carreras.',
     speaker_linkedin: '',
+    google_calendar_url: '',
     link_zoom: '',
     grabacion_url: '',
     tags: 'negociación,salario',
@@ -42,6 +44,7 @@ const PLACEHOLDER_WEBINARS: Webinar[] = [
     speaker: 'Piraí Team',
     speaker_bio: 'El equipo de Piraí con años de experiencia en selección y búsqueda laboral.',
     speaker_linkedin: '',
+    google_calendar_url: '',
     link_zoom: '',
     grabacion_url: '',
     tags: 'linkedin,marca personal',
@@ -55,6 +58,7 @@ const PLACEHOLDER_WEBINARS: Webinar[] = [
     speaker: 'Invitado especial',
     speaker_bio: 'Tech lead con 10+ años de experiencia haciendo entrevistas en empresas top.',
     speaker_linkedin: '',
+    google_calendar_url: '',
     link_zoom: '',
     grabacion_url: '',
     tags: 'entrevistas,tech',
@@ -329,7 +333,7 @@ export default function WebinarsPage() {
                   <p className="text-sm text-[#718096]">Te enviamos los detalles a <strong>{email}</strong>. ¡Nos vemos en el webinar!</p>
                   <div className="flex items-center justify-center gap-2 mt-5">
                     <a
-                      href={googleCalendarUrl(modal)}
+                      href={modal.google_calendar_url || googleCalendarUrl(modal)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs font-semibold bg-[#F2F4F7] text-[#2D3748] px-3 py-2 rounded-xl hover:bg-gray-200 transition-colors"
