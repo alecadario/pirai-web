@@ -42,19 +42,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Faltan campos' }, { status: 400 });
     }
 
-    const checkParams = new URLSearchParams({
-      filterByFormula: `AND({email}="${email}", {leccion_id}="${leccion_id}")`,
-      maxRecords: '1',
-    });
-    const existing = await at(`/${encodeURIComponent('Progreso')}?${checkParams}`);
-    if (existing.records?.length > 0) {
-      return NextResponse.json({ ok: true, already: true });
+    try {
+      const checkParams = new URLSearchParams({
+        filterByFormula: `AND({email}="${email}", {leccion_id}="${leccion_id}")`,
+        maxRecords: '1',
+      });
+      const existing = await at(`/${encodeURIComponent('Progreso')}?${checkParams}`);
+      if (existing.records?.length > 0) {
+        return NextResponse.json({ ok: true, already: true });
+      }
+    } catch {
+      // duplicate check failed — proceed to create rather than silently drop the progress
     }
 
     await at(`/${encodeURIComponent('Progreso')}`, {
       method: 'POST',
       body: JSON.stringify({
         fields: { email, curso_id, leccion_id, visto_completo: true, fecha: new Date().toISOString() },
+        typecast: true,
       }),
     });
     return NextResponse.json({ ok: true });

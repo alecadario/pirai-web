@@ -154,15 +154,18 @@ export default function CursoDetallePage() {
     setEnrolling(false);
   }
 
-  function handleDescargarCertificado() {
+  async function handleDescargarCertificado() {
     if (!curso) return;
     const fecha = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-    generateCertificadoPDF({
-      nombre,
-      cursoTitulo: curso.titulo,
-      fecha,
-      codigo: makeCertificadoCodigo(email, curso.id),
-    });
+    const codigo = makeCertificadoCodigo(email, curso.id);
+    try {
+      await fetch('/api/certificados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, email, curso_id: curso.id, codigo }),
+      });
+    } catch { /* el certificado se descarga igual aunque falle el registro */ }
+    generateCertificadoPDF({ nombre, cursoTitulo: curso.titulo, fecha, codigo });
   }
 
   const todasCompletadas = lecciones.length > 0 && lecciones.every(l => completadas.has(l.id));
