@@ -16,29 +16,11 @@ async function at(path: string, options: RequestInit = {}) {
   return r.json();
 }
 
-// GET /api/inscripciones?email=&curso_id= — is this person enrolled in this course?
-export async function GET(req: NextRequest) {
-  try {
-    const email = req.nextUrl.searchParams.get('email');
-    const cursoId = req.nextUrl.searchParams.get('curso_id');
-    if (!email || !cursoId) return NextResponse.json({ error: 'Faltan parámetros' }, { status: 400 });
-
-    const params = new URLSearchParams({
-      filterByFormula: `AND({email}="${email}", {curso_id}="${cursoId}")`,
-      maxRecords: '1',
-    });
-    const d = await at(`/${encodeURIComponent('Inscripciones')}?${params}`);
-    return NextResponse.json({ inscripto: (d.records || []).length > 0 });
-  } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
-  }
-}
-
-// POST /api/inscripciones — enroll a person in a course
+// POST /api/certificados — log a certificate issuance (best-effort; does not block the PDF download)
 export async function POST(req: NextRequest) {
   try {
-    const { nombre, email, curso_id } = await req.json();
-    if (!nombre || !email || !curso_id) {
+    const { nombre, email, curso_id, codigo } = await req.json();
+    if (!nombre || !email || !curso_id || !codigo) {
       return NextResponse.json({ error: 'Faltan campos' }, { status: 400 });
     }
 
@@ -47,18 +29,18 @@ export async function POST(req: NextRequest) {
         filterByFormula: `AND({email}="${email}", {curso_id}="${curso_id}")`,
         maxRecords: '1',
       });
-      const existing = await at(`/${encodeURIComponent('Inscripciones')}?${checkParams}`);
+      const existing = await at(`/${encodeURIComponent('Certificados')}?${checkParams}`);
       if (existing.records?.length > 0) {
         return NextResponse.json({ ok: true, already: true });
       }
     } catch {
-      // duplicate check failed — proceed to create rather than silently drop the enrollment
+      // duplicate check failed — proceed to create rather than silently drop the record
     }
 
-    await at(`/${encodeURIComponent('Inscripciones')}`, {
+    await at(`/${encodeURIComponent('Certificados')}`, {
       method: 'POST',
       body: JSON.stringify({
-        fields: { nombre, email, curso_id, fecha_inscripcion: new Date().toISOString() },
+        fields: { nombre, email, curso_id, codigo, fecha_emision: new Date().toISOString() },
         typecast: true,
       }),
     });

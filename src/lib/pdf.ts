@@ -426,6 +426,46 @@ export function makeCertificadoCodigo(email: string, cursoId: string): string {
   return `PIRAI-${hash.toString(36).toUpperCase()}`;
 }
 
+function loadImageEl(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+// Crops away transparent padding around a logo so it can be placed at its true aspect ratio
+function trimTransparentPadding(img: HTMLImageElement): { dataUrl: string; ratio: number } | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0);
+  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  let minX = canvas.width, minY = canvas.height, maxX = 0, maxY = 0;
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      if (data[(y * canvas.width + x) * 4 + 3] > 10) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX <= minX || maxY <= minY) return null;
+  const w = maxX - minX + 1, h = maxY - minY + 1;
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const octx = out.getContext('2d');
+  if (!octx) return null;
+  octx.drawImage(canvas, minX, minY, w, h, 0, 0, w, h);
+  return { dataUrl: out.toDataURL('image/png'), ratio: w / h };
+}
+
 export async function generateCertificadoPDF({ nombre, cursoTitulo, fecha, codigo }: {
   nombre: string;
   cursoTitulo: string;
@@ -435,59 +475,101 @@ export async function generateCertificadoPDF({ nombre, cursoTitulo, fecha, codig
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   const W = 297, H = 210;
-  const ac: [number, number, number] = [0, 168, 107];
-  const dark: [number, number, number] = [26, 35, 50];
+  const green: [number, number, number] = [0, 168, 107];
+  const turquoise: [number, number, number] = [27, 205, 209];
+  const navy: [number, number, number] = [26, 35, 50];
+  const gray: [number, number, number] = [113, 128, 150];
   const safe = (t: unknown) => pdfSafe(t);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const GState = (doc as any).GState;
 
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, W, H, 'F');
 
-  doc.setDrawColor(...ac);
-  doc.setLineWidth(1.2);
-  doc.rect(10, 10, W - 20, H - 20);
-  doc.setDrawColor(...dark);
-  doc.setLineWidth(0.3);
-  doc.rect(13, 13, W - 26, H - 26);
+  // Faint watermark of the "P" mark, centered
+  const iconImg = await loadImageEl('/pirai-icon.png');
+  if (iconImg) {
+    const trimmed = trimTransparentPadding(iconImg);
+    if (trimmed && GState) {
+      const boxW = 130;
+      const boxH = boxW / trimmed.ratio;
+      doc.setGState(new GState({ opacity: 0.045 }));
+      doc.addImage(trimmed.dataUrl, 'PNG', W / 2 - boxW / 2, H / 2 - boxH / 2, boxW, boxH);
+      doc.setGState(new GState({ opacity: 1 }));
+    }
+  }
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(...ac);
-  doc.text('PIRAÍ', W / 2, 34, { align: 'center' });
+  // Outer border with two-tone corner accents
+  doc.setDrawColor(...navy);
+  doc.setLineWidth(0.4);
+  doc.rect(10, 10, W - 20, H - 20);
+  const corner = 14;
+  doc.setLineWidth(1.4);
+  doc.setDrawColor(...green);
+  doc.line(10, 10 + corner, 10, 10);
+  doc.line(10, 10, 10 + corner, 10);
+  doc.line(W - 10, H - 10 - corner, W - 10, H - 10);
+  doc.line(W - 10 - corner, H - 10, W - 10, H - 10);
+  doc.setDrawColor(...turquoise);
+  doc.line(W - 10 - corner, 10, W - 10, 10);
+  doc.line(W - 10, 10, W - 10, 10 + corner);
+  doc.line(10, H - 10 - corner, 10, H - 10);
+  doc.line(10, H - 10, 10 + corner, H - 10);
+
+  // Logo
+  const nombreImg = await loadImageEl('/pirai-nombre.png');
+  let logoBottomY = 30;
+  const nombreTrimmed = nombreImg ? trimTransparentPadding(nombreImg) : null;
+  if (nombreTrimmed) {
+    const logoW = 52;
+    const logoH = logoW / nombreTrimmed.ratio;
+    doc.addImage(nombreTrimmed.dataUrl, 'PNG', W / 2 - logoW / 2, 24, logoW, logoH);
+    logoBottomY = 24 + logoH;
+  } else {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...green);
+    doc.text('PIRAÍ', W / 2, 34, { align: 'center' });
+    logoBottomY = 36;
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(13);
-  doc.setTextColor(...dark);
-  doc.text('CERTIFICADO DE FINALIZACIÓN', W / 2, 48, { align: 'center' });
+  doc.setTextColor(...navy);
+  doc.text('CERTIFICADO DE FINALIZACIÓN', W / 2, logoBottomY + 12, { align: 'center' });
 
-  doc.setDrawColor(...ac);
-  doc.setLineWidth(0.5);
-  doc.line(W / 2 - 30, 52, W / 2 + 30, 52);
+  const lineY = logoBottomY + 16;
+  doc.setLineWidth(0.6);
+  doc.setDrawColor(...green);
+  doc.line(W / 2 - 26, lineY, W / 2, lineY);
+  doc.setDrawColor(...turquoise);
+  doc.line(W / 2, lineY, W / 2 + 26, lineY);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Se certifica que', W / 2, 74, { align: 'center' });
+  doc.setTextColor(...gray);
+  doc.text('Se certifica que', W / 2, lineY + 20, { align: 'center' });
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(26);
-  doc.setTextColor(...dark);
-  doc.text(safe(nombre).toUpperCase(), W / 2, 90, { align: 'center' });
+  doc.setTextColor(...navy);
+  doc.text(safe(nombre).toUpperCase(), W / 2, lineY + 36, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(100, 100, 100);
-  doc.text('completó exitosamente el curso', W / 2, 104, { align: 'center' });
+  doc.setTextColor(...gray);
+  doc.text('completó exitosamente el curso', W / 2, lineY + 50, { align: 'center' });
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(...ac);
+  doc.setTextColor(...green);
   doc.splitTextToSize(safe(cursoTitulo), W - 90).forEach((l: string, i: number) => {
-    doc.text(l, W / 2, 118 + i * 8, { align: 'center' });
+    doc.text(l, W / 2, lineY + 64 + i * 8, { align: 'center' });
   });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.setTextColor(120, 120, 120);
+  doc.setTextColor(...gray);
   doc.text(`Emitido el ${safe(fecha)}`, W / 2, H - 30, { align: 'center' });
   doc.text(`Código: ${safe(codigo)}`, W / 2, H - 24, { align: 'center' });
 
