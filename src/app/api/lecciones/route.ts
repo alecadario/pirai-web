@@ -12,7 +12,7 @@ async function at(path: string, options: RequestInit = {}) {
     ...options,
     headers: { ...atHeaders(), ...(options.headers as Record<string, string> || {}) },
   });
-  if (!r.ok) throw new Error(`Airtable ${r.status}`);
+  if (!r.ok) throw new Error(`Airtable ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -22,10 +22,9 @@ export async function GET(req: NextRequest) {
     const cursoId = req.nextUrl.searchParams.get('curso_id');
     if (!cursoId) return NextResponse.json({ error: 'Falta curso_id' }, { status: 400 });
 
-    const params = new URLSearchParams({
-      filterByFormula: `{curso_id}="${cursoId}"`,
-      sort: JSON.stringify([{ field: 'orden', direction: 'asc' }]),
-    });
+    const params = new URLSearchParams({ filterByFormula: `{curso_id}="${cursoId}"` });
+    params.set('sort[0][field]', 'orden');
+    params.set('sort[0][direction]', 'asc');
     const d = await at(`/${encodeURIComponent('Lecciones')}?${params}`);
     const lecciones = (d.records || []).map((r: { id: string; fields: Record<string, unknown> }) => ({
       id: r.id,

@@ -28,7 +28,7 @@ export default function CursosPage() {
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/pirai-nombre.png" alt="Piraí" width={80} height={80} className="h-7 w-auto object-contain" />
+            <Image src="/pirai-nombre.png" alt="Piraí" width={500} height={500} className="h-20 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-sm text-[#718096] hover:text-[#2D3748] transition-colors">Inicio</Link>
