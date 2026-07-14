@@ -12,7 +12,7 @@ async function at(path: string, options: RequestInit = {}) {
     ...options,
     headers: { ...atHeaders(), ...(options.headers as Record<string, string> || {}) },
   });
-  if (!r.ok) throw new Error(`Airtable ${r.status}`);
+  if (!r.ok) throw new Error(`Airtable ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -33,10 +33,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const params = new URLSearchParams({
-      filterByFormula: `{activo}=1`,
-      sort: JSON.stringify([{ field: 'orden', direction: 'asc' }]),
-    });
+    const params = new URLSearchParams({ filterByFormula: `{activo}=1` });
+    params.set('sort[0][field]', 'orden');
+    params.set('sort[0][direction]', 'asc');
     const d = await at(`/${encodeURIComponent('Cursos')}?${params}`);
     const cursos = (d.records || []).map((r: { id: string; fields: Record<string, unknown> }) => ({
       id: r.id,

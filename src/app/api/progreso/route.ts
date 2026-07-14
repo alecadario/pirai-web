@@ -12,7 +12,7 @@ async function at(path: string, options: RequestInit = {}) {
     ...options,
     headers: { ...atHeaders(), ...(options.headers as Record<string, string> || {}) },
   });
-  if (!r.ok) throw new Error(`Airtable ${r.status}`);
+  if (!r.ok) throw new Error(`Airtable ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
