@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ChevronRight, GraduationCap } from 'lucide-react';
+import { slugify } from '@/lib/slug';
 
 interface Curso {
   id: string;
@@ -65,7 +66,7 @@ export default function CursosPage() {
             {cursos.map(c => (
               <Link
                 key={c.id}
-                href={`/cursos/${c.id}`}
+                href={`/cursos/${slugify(c.titulo)}`}
                 className="bg-white rounded-3xl border border-[#E2E8F0] overflow-hidden hover:shadow-md transition-shadow flex flex-col"
               >
                 {c.portada_url ? (

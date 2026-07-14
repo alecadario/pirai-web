@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Circle, Loader2, Award, ChevronLeft, AlertTriangle } from 'lucide-react';
 import { getYouTubeId, loadYouTubeAPI, type YTPlayer } from '@/lib/youtube';
 import { generateCertificadoPDF, makeCertificadoCodigo } from '@/lib/pdf';
+import { slugify } from '@/lib/slug';
 
 interface Curso {
   id: string;
@@ -24,7 +25,7 @@ interface Leccion {
 }
 
 export default function CursoDetallePage() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
 
   const [curso, setCurso] = useState<Curso | null>(null);
   const [lecciones, setLecciones] = useState<Leccion[]>([]);
@@ -47,20 +48,21 @@ export default function CursoDetallePage() {
   const emailRef = useRef('');
   const cursoIdRef = useRef('');
 
-  // Load course + lessons
+  // Resolve the slug in the URL to a real course (and its Airtable record id)
   useEffect(() => {
-    if (!id) return;
-    cursoIdRef.current = id;
-    Promise.all([
-      fetch(`/api/cursos?id=${id}`).then(r => r.json()),
-      fetch(`/api/lecciones?curso_id=${id}`).then(r => r.json()),
-    ]).then(([cursoData, leccionesData]) => {
-      setCurso(cursoData.curso || null);
-      const l = leccionesData.lecciones || [];
-      setLecciones(l);
-      if (l.length > 0) setSelectedId(l[0].id);
-    }).finally(() => setLoadingCurso(false));
-  }, [id]);
+    if (!slug) return;
+    fetch('/api/cursos').then(r => r.json()).then(d => {
+      const match = (d.cursos || []).find((c: Curso) => slugify(c.titulo) === slug) || null;
+      setCurso(match);
+      if (!match) { setLoadingCurso(false); return; }
+      cursoIdRef.current = match.id;
+      fetch(`/api/lecciones?curso_id=${match.id}`).then(r => r.json()).then(leccionesData => {
+        const l = leccionesData.lecciones || [];
+        setLecciones(l);
+        if (l.length > 0) setSelectedId(l[0].id);
+      }).finally(() => setLoadingCurso(false));
+    }).catch(() => setLoadingCurso(false));
+  }, [slug]);
 
   // Enroll (or confirm existing enrollment) + load progress — called once with a confirmed identity
   async function enrollAndLoad(confirmedNombre: string, confirmedEmail: string, cursoId: string) {
@@ -83,18 +85,18 @@ export default function CursoDetallePage() {
     setEnrolled(true);
   }
 
-  // Figure out who's watching
+  // Figure out who's watching (waits until the slug resolves to a real course)
   useEffect(() => {
-    if (!id) return;
+    if (!curso) return;
     const storedEmail = localStorage.getItem('pirai_cursos_email');
     const storedNombre = localStorage.getItem('pirai_cursos_nombre');
     if (storedEmail && storedNombre) {
-      enrollAndLoad(storedNombre, storedEmail, id);
+      enrollAndLoad(storedNombre, storedEmail, curso.id);
     } else {
       setShowEnrollForm(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [curso]);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
@@ -147,9 +149,9 @@ export default function CursoDetallePage() {
   }, []);
 
   async function handleEnroll() {
-    if (!formNombre.trim() || !formEmail.trim() || !id) return;
+    if (!formNombre.trim() || !formEmail.trim() || !curso) return;
     setEnrolling(true);
-    await enrollAndLoad(formNombre.trim(), formEmail.trim(), id);
+    await enrollAndLoad(formNombre.trim(), formEmail.trim(), curso.id);
     setShowEnrollForm(false);
     setEnrolling(false);
   }
