@@ -77,7 +77,10 @@ function isPast(fecha: string) {
 
 function webinarTimes(w: Webinar): { start: Date; end: Date } | null {
   if (!w.fecha) return null;
-  const start = new Date(`${w.fecha}T${w.hora || '19:00'}:00`);
+  // Tolerate extra text in "hora" beyond HH:MM (ej: "9:00 Bolivia" en vez de "9:00")
+  const horaMatch = w.hora?.match(/(\d{1,2}):(\d{2})/);
+  const hora = horaMatch ? `${horaMatch[1].padStart(2, '0')}:${horaMatch[2]}` : '19:00';
+  const start = new Date(`${w.fecha}T${hora}:00`);
   if (isNaN(start.getTime())) return null;
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   return { start, end };
