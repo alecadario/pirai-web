@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const AT_KEY = process.env.AIRTABLE_API_KEY || process.env.NEXT_PUBLIC_AIRTABLE_API_KEY || '';
 const AT_BASE = process.env.AIRTABLE_BASE_ID || process.env.NEXT_PUBLIC_AIRTABLE_BASE_ID || '';
@@ -16,23 +16,9 @@ async function at(path: string, options: RequestInit = {}) {
   return r.json();
 }
 
-// GET /api/cursos — list active courses, or a single course with ?id=recXXX
-export async function GET(req: NextRequest) {
+// GET /api/cursos — list active courses
+export async function GET() {
   try {
-    const id = req.nextUrl.searchParams.get('id');
-
-    if (id) {
-      const r = await at(`/${encodeURIComponent('Cursos')}/${id}`);
-      return NextResponse.json({
-        curso: {
-          id: r.id,
-          titulo: r.fields.titulo || '',
-          descripcion: r.fields.descripcion || '',
-          portada_url: r.fields.portada_url || '',
-        },
-      });
-    }
-
     const params = new URLSearchParams({ filterByFormula: `{activo}=1` });
     params.set('sort[0][field]', 'orden');
     params.set('sort[0][direction]', 'asc');
