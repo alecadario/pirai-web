@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Calendar, Clock, User, ChevronRight, X, Loader2, CheckCircle, Play, Tag } from 'lucide-react';
+import { Calendar, Clock, User, ChevronRight, X, Loader2, CheckCircle, Play, Tag, ExternalLink, CalendarPlus, Download } from 'lucide-react';
 
 interface Webinar {
   id: string;
@@ -13,6 +13,7 @@ interface Webinar {
   hora: string;
   speaker: string;
   speaker_bio: string;
+  speaker_linkedin: string;
   link_zoom: string;
   grabacion_url: string;
   tags: string;
@@ -27,6 +28,7 @@ const PLACEHOLDER_WEBINARS: Webinar[] = [
     hora: '19:00',
     speaker: 'Ale Cadario',
     speaker_bio: 'CEO de Piraí, ex-reclutadora y especialista en carreras.',
+    speaker_linkedin: '',
     link_zoom: '',
     grabacion_url: '',
     tags: 'negociación,salario',
@@ -39,6 +41,7 @@ const PLACEHOLDER_WEBINARS: Webinar[] = [
     hora: '18:30',
     speaker: 'Piraí Team',
     speaker_bio: 'El equipo de Piraí con años de experiencia en selección y búsqueda laboral.',
+    speaker_linkedin: '',
     link_zoom: '',
     grabacion_url: '',
     tags: 'linkedin,marca personal',
@@ -51,6 +54,7 @@ const PLACEHOLDER_WEBINARS: Webinar[] = [
     hora: '19:00',
     speaker: 'Invitado especial',
     speaker_bio: 'Tech lead con 10+ años de experiencia haciendo entrevistas en empresas top.',
+    speaker_linkedin: '',
     link_zoom: '',
     grabacion_url: '',
     tags: 'entrevistas,tech',
@@ -65,6 +69,55 @@ function formatFecha(fecha: string) {
 
 function isPast(fecha: string) {
   return new Date(fecha + 'T23:59:59') < new Date();
+}
+
+function webinarTimes(w: Webinar) {
+  const start = new Date(`${w.fecha}T${w.hora || '19:00'}:00`);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  return { start, end };
+}
+
+function icsDate(d: Date) {
+  return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+}
+
+function googleCalendarUrl(w: Webinar) {
+  const { start, end } = webinarTimes(w);
+  const details = w.descripcion + (w.link_zoom ? `\n\nLink de acceso: ${w.link_zoom}` : '');
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: w.titulo,
+    dates: `${icsDate(start)}/${icsDate(end)}`,
+    details,
+    location: w.link_zoom || '',
+  });
+  return `https://calendar.google.com/calendar/render?${params}`;
+}
+
+function downloadIcs(w: Webinar) {
+  const { start, end } = webinarTimes(w);
+  const details = (w.descripcion + (w.link_zoom ? `\\nLink de acceso: ${w.link_zoom}` : '')).replace(/\n/g, '\\n');
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'BEGIN:VEVENT',
+    `UID:${w.id}@pirai.es`,
+    `DTSTAMP:${icsDate(new Date())}`,
+    `DTSTART:${icsDate(start)}`,
+    `DTEND:${icsDate(end)}`,
+    `SUMMARY:${w.titulo}`,
+    `DESCRIPTION:${details}`,
+    w.link_zoom ? `LOCATION:${w.link_zoom}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${w.titulo.replace(/\s+/g, '_')}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function WebinarsPage() {
@@ -188,10 +241,24 @@ export default function WebinarsPage() {
                           </span>
                         )}
                         {w.speaker && (
-                          <span className="flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-[#00A86B]" />
-                            {w.speaker}
-                          </span>
+                          w.speaker_linkedin ? (
+                            <a
+                              href={w.speaker_linkedin}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="flex items-center gap-1.5 hover:text-[#00A86B] hover:underline"
+                            >
+                              <User className="w-3.5 h-3.5 text-[#00A86B]" />
+                              {w.speaker}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ) : (
+                            <span className="flex items-center gap-1.5">
+                              <User className="w-3.5 h-3.5 text-[#00A86B]" />
+                              {w.speaker}
+                            </span>
+                          )
                         )}
                       </div>
                     </div>
@@ -260,7 +327,23 @@ export default function WebinarsPage() {
                   <CheckCircle className="w-12 h-12 text-[#00A86B] mx-auto mb-3" />
                   <p className="font-bold text-[#2D3748] text-lg mb-1">¡Ya estás anotado/a! 🎉</p>
                   <p className="text-sm text-[#718096]">Te enviamos los detalles a <strong>{email}</strong>. ¡Nos vemos en el webinar!</p>
-                  <button onClick={() => setModal(null)} className="mt-5 text-sm font-semibold text-[#00A86B] hover:underline">
+                  <div className="flex items-center justify-center gap-2 mt-5">
+                    <a
+                      href={googleCalendarUrl(modal)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-[#F2F4F7] text-[#2D3748] px-3 py-2 rounded-xl hover:bg-gray-200 transition-colors"
+                    >
+                      <CalendarPlus className="w-3.5 h-3.5" /> Google Calendar
+                    </a>
+                    <button
+                      onClick={() => downloadIcs(modal)}
+                      className="flex items-center gap-1.5 text-xs font-semibold bg-[#F2F4F7] text-[#2D3748] px-3 py-2 rounded-xl hover:bg-gray-200 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Outlook / Apple (.ics)
+                    </button>
+                  </div>
+                  <button onClick={() => setModal(null)} className="mt-4 text-sm font-semibold text-[#00A86B] hover:underline">
                     Cerrar
                   </button>
                 </div>
@@ -272,7 +355,18 @@ export default function WebinarsPage() {
                         <User className="w-4 h-4 text-[#00A86B]" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-[#2D3748]">{modal.speaker}</p>
+                        {modal.speaker_linkedin ? (
+                          <a
+                            href={modal.speaker_linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-[#2D3748] hover:text-[#00A86B] hover:underline inline-flex items-center gap-1"
+                          >
+                            {modal.speaker} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <p className="text-xs font-bold text-[#2D3748]">{modal.speaker}</p>
+                        )}
                         {modal.speaker_bio && <p className="text-xs text-[#718096] mt-0.5">{modal.speaker_bio}</p>}
                       </div>
                     </div>
