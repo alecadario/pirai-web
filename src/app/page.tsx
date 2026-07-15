@@ -153,10 +153,15 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button className="w-full sm:w-auto flex items-center justify-center gap-3 bg-white text-[#2D3748] font-semibold px-6 py-3.5 rounded-2xl hover:bg-gray-50 transition-all shadow-lg cursor-not-allowed">
+            <a
+              href="https://apps.apple.com/es/app/pira%C3%AD/id6761818966?l=en-GB"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto flex items-center justify-center gap-3 bg-white text-[#2D3748] font-semibold px-6 py-3.5 rounded-2xl hover:bg-gray-50 transition-all shadow-lg"
+            >
               <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-              <span>iOS <span className="text-xs text-gray-400 font-normal ml-1">próximamente</span></span>
-            </button>
+              <span>Descargar en App Store</span>
+            </a>
 
             <button className="w-full sm:w-auto flex items-center justify-center gap-3 bg-white text-[#2D3748] font-semibold px-6 py-3.5 rounded-2xl hover:bg-gray-50 transition-all shadow-lg cursor-not-allowed">
               <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76c.3.17.64.2.96.09l12.45-7.19-2.78-2.79-10.63 9.89zM.29 1.33C.11 1.64 0 2.01 0 2.44v19.12c0 .43.11.8.29 1.11l.06.06 10.71-10.71v-.25L.35 1.27l-.06.06zM20.67 10.3l-2.83-1.63-3.13 3.12 3.13 3.12 2.85-1.64c.81-.47.81-1.23-.02-1.97zM3.18.24L15.63 7.43l-2.78 2.79L2.22.33c.32-.11.66-.08.96.09v-.18z"/></svg>
@@ -295,9 +300,14 @@ export default function LandingPage() {
             >
               <Monitor className="w-5 h-5" /> Empezar en desktop
             </Link>
-            <button className="flex items-center gap-2 border border-white/40 text-white font-semibold px-7 py-3.5 rounded-2xl hover:bg-white/10 transition-colors cursor-not-allowed">
-              <Smartphone className="w-5 h-5" /> App próximamente
-            </button>
+            <a
+              href="https://apps.apple.com/es/app/pira%C3%AD/id6761818966?l=en-GB"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 border border-white/40 text-white font-semibold px-7 py-3.5 rounded-2xl hover:bg-white/10 transition-colors"
+            >
+              <Smartphone className="w-5 h-5" /> Descargar en App Store
+            </a>
           </div>
         </div>
       </section>
