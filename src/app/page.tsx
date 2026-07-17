@@ -312,6 +312,51 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* EMPRESAS CTA */}
+      <section className="py-20 px-5 bg-[#F2F4F7]">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-10">
+          <div className="flex-1">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">Para empresas</span>
+            <h2 className="text-3xl font-extrabold text-[#2D3748] mb-4">
+              ¿Buscás talento?<br />
+              <span className="text-[#00A86B]">Publicá tus búsquedas en Piraí.</span>
+            </h2>
+            <p className="text-[#718096] mb-6 leading-relaxed">
+              Miles de candidatos activos usan Piraí para organizar su búsqueda laboral.
+              Publicá tus posiciones y llegá a personas que están buscando trabajo con propósito.
+            </p>
+            <a
+              href="https://piraiapp.com/empleadores"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-[#2D3748] text-white font-semibold px-5 py-3 rounded-xl hover:bg-[#1A2332] transition-colors"
+            >
+              <Building2 className="w-4 h-4" />
+              Publicar una búsqueda <ChevronRight className="w-4 h-4" />
+            </a>
+          </div>
+          <div className="w-full md:w-72 flex-shrink-0">
+            <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm space-y-4">
+              {[
+                { icon: Users, color: 'bg-[#00A86B]/10 text-[#00A86B]', title: 'Candidatos activos', desc: 'Personas que buscan trabajo hoy, no hace 6 meses.' },
+                { icon: Target, color: 'bg-[#1BCDD1]/10 text-[#1BCDD1]', title: 'Perfiles verificados', desc: 'Con CV, LinkedIn y historial de actividad.' },
+                { icon: Zap, color: 'bg-amber-100 text-amber-600', title: 'Publicación simple', desc: 'En minutos, sin burocracia.' },
+              ].map(({ icon: Icon, color, title, desc }) => (
+                <div key={title} className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#2D3748] text-sm">{title}</p>
+                    <p className="text-xs text-[#718096]">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer className="bg-[#1A2332] text-white/50 py-10 px-5">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
