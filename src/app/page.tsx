@@ -444,23 +444,50 @@ export default function LandingPage() {
             <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">La app por dentro</span>
             <h2 className="text-3xl font-extrabold text-[#2D3748]">Todo lo que necesitás, en un solo lugar</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[
-              { src: '/screen-tudia.png', label: 'Tu día' },
-              { src: '/screen-prospectos.png', label: 'Prospectos' },
-              { src: '/screen-empleos.png', label: 'Empleos' },
-              { src: '/screen-marca.png', label: 'Marca Personal' },
-              { src: '/screen-eventos.png', label: 'Eventos' },
-              { src: '/screen-cv.png', label: 'CV' },
-              { src: '/screen-insights.png', label: 'Insights' },
-            ].map(({ src, label }) => (
-              <div key={src} className="flex flex-col items-center gap-2">
-                <div className="rounded-2xl overflow-hidden shadow-md border border-[#E2E8F0] w-full">
-                  <Image src={src} alt={label} width={300} height={600} className="w-full h-auto object-cover" />
+          {/* Carousel */}
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center gap-4 w-full max-w-sm mx-auto">
+              <button
+                onClick={prevScreen}
+                className="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-[#E2E8F0] shadow flex items-center justify-center hover:bg-[#F0F4F8] transition-colors"
+                aria-label="Anterior"
+              >
+                <ChevronLeft size={20} className="text-[#2D3748]" />
+              </button>
+              <div className="flex-1 flex flex-col items-center gap-3">
+                <div className="rounded-3xl overflow-hidden shadow-xl border border-[#E2E8F0] w-48">
+                  <Image
+                    src={SCREENS[screenIdx].src}
+                    alt={SCREENS[screenIdx].label}
+                    width={300}
+                    height={600}
+                    className="w-full h-auto object-cover"
+                  />
                 </div>
-                <span className="text-xs font-semibold text-[#718096]">{label}</span>
               </div>
-            ))}
+              <button
+                onClick={nextScreen}
+                className="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-[#E2E8F0] shadow flex items-center justify-center hover:bg-[#F0F4F8] transition-colors"
+                aria-label="Siguiente"
+              >
+                <ChevronRight size={20} className="text-[#2D3748]" />
+              </button>
+            </div>
+            <div className="text-center max-w-sm mx-auto">
+              <p className="font-bold text-[#2D3748] text-lg">{SCREENS[screenIdx].label}</p>
+              <p className="text-sm text-[#718096] mt-1 leading-relaxed">{SCREENS[screenIdx].desc}</p>
+            </div>
+            {/* Dots */}
+            <div className="flex gap-2">
+              {SCREENS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setScreenIdx(i)}
+                  className={`w-2 h-2 rounded-full transition-colors ${i === screenIdx ? 'bg-[#00A86B]' : 'bg-[#CBD5E0]'}`}
+                  aria-label={`Ir a pantalla ${i + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
