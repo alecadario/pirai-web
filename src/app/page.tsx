@@ -70,6 +70,180 @@ const CONTENT = {
   },
 };
 
+const CURRENCIES = [
+  { code: 'USD', symbol: 'US$', label: 'Dólares (USD)' },
+  { code: 'EUR', symbol: '€',   label: 'Euros (EUR)' },
+  { code: 'ARS', symbol: 'AR$', label: 'Pesos argentinos (ARS)' },
+  { code: 'MXN', symbol: 'MX$', label: 'Pesos mexicanos (MXN)' },
+  { code: 'BOB', symbol: 'Bs.', label: 'Bolivianos (BOB)' },
+];
+
+const PLANS_DATA = [
+  {
+    key: 'gratis',
+    name: 'Gratis',
+    desc: 'Para empezar y explorar',
+    prices: { USD: 0, EUR: 0, ARS: 0, MXN: 0, BOB: 0 },
+    cta: 'Empezar gratis',
+    featured: false,
+    features: [
+      { label: 'CRM de empresas y contactos', included: true },
+      { label: 'Pipeline de búsqueda', included: true },
+      { label: 'Acciones diarias', included: true },
+      { label: 'Mensajes con IA', included: true, note: '10 por semana' },
+      { label: 'Análisis de CV', included: true, note: '5 por semana' },
+      { label: 'Preparación de entrevistas', included: true, note: '1 por semana' },
+      { label: 'Búsqueda de prospectos', included: true, note: '5 búsquedas' },
+      { label: 'Insights y métricas', included: true },
+      { label: 'Webinars gratuitos', included: true },
+      { label: 'Marca personal con IA', included: false },
+    ],
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    desc: 'Para búsquedas activas',
+    prices: { USD: 3.99, EUR: 3.69, ARS: 3800, MXN: 68, BOB: 28 },
+    cta: 'Empezar con Pro',
+    featured: true,
+    features: [
+      { label: 'CRM de empresas y contactos', included: true },
+      { label: 'Pipeline de búsqueda', included: true },
+      { label: 'Acciones diarias', included: true },
+      { label: 'Mensajes con IA', included: true, note: '25 por semana' },
+      { label: 'Análisis de CV', included: true, note: '10 por semana' },
+      { label: 'Preparación de entrevistas', included: true, note: 'Ilimitada' },
+      { label: 'Búsqueda de prospectos', included: true, note: '20 búsquedas' },
+      { label: 'Insights y métricas', included: true },
+      { label: 'Webinars gratuitos', included: true },
+      { label: 'Marca personal con IA', included: true },
+    ],
+  },
+  {
+    key: 'acelerado',
+    name: 'Acelerado',
+    desc: 'Sin límites, máximo resultado',
+    prices: { USD: 9.99, EUR: 9.19, ARS: 9500, MXN: 170, BOB: 69 },
+    cta: 'Empezar Acelerado',
+    featured: false,
+    features: [
+      { label: 'CRM de empresas y contactos', included: true },
+      { label: 'Pipeline de búsqueda', included: true },
+      { label: 'Acciones diarias', included: true },
+      { label: 'Mensajes con IA', included: true, note: 'Ilimitado' },
+      { label: 'Análisis de CV', included: true, note: 'Ilimitado' },
+      { label: 'Preparación de entrevistas', included: true, note: 'Ilimitada' },
+      { label: 'Búsqueda de prospectos', included: true, note: 'Ilimitada' },
+      { label: 'Insights y métricas', included: true },
+      { label: 'Webinars gratuitos', included: true },
+      { label: 'Marca personal con IA', included: true },
+    ],
+  },
+];
+
+function PricingSection() {
+  const [currency, setCurrency] = useState('USD');
+  const cur = CURRENCIES.find(c => c.code === currency)!;
+
+  function formatPrice(price: number) {
+    if (price === 0) return 'Gratis';
+    if (currency === 'ARS' || currency === 'MXN' || currency === 'BOB') {
+      return `${cur.symbol}${Math.round(price).toLocaleString('es')}`;
+    }
+    return `${cur.symbol}${price.toFixed(2)}`;
+  }
+
+  return (
+    <section id="precios" className="py-24 px-5 bg-white">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">Precios</span>
+          <h2 className="text-4xl font-extrabold text-[#2D3748] mb-4">Simple y transparente</h2>
+          <p className="text-lg text-[#718096] mb-8">Empezá gratis. Escalá cuando estés listo.</p>
+
+          {/* selector de moneda */}
+          <div className="inline-flex items-center gap-2 bg-[#F2F4F7] rounded-2xl p-1">
+            {CURRENCIES.map(c => (
+              <button
+                key={c.code}
+                onClick={() => setCurrency(c.code)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  currency === c.code
+                    ? 'bg-white text-[#2D3748] shadow-sm'
+                    : 'text-[#718096] hover:text-[#2D3748]'
+                }`}
+              >
+                {c.code}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {PLANS_DATA.map(plan => (
+            <div
+              key={plan.key}
+              className={`relative rounded-3xl p-8 flex flex-col ${
+                plan.featured
+                  ? 'bg-[#1A2332] text-white shadow-2xl scale-105'
+                  : 'bg-white border border-[#E2E8F0]'
+              }`}
+            >
+              {plan.featured && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-[#00A86B] text-white text-xs font-bold px-4 py-1 rounded-full">Más popular</span>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <h3 className={`text-xl font-extrabold mb-1 ${plan.featured ? 'text-white' : 'text-[#2D3748]'}`}>{plan.name}</h3>
+                <p className={`text-sm mb-4 ${plan.featured ? 'text-white/60' : 'text-[#718096]'}`}>{plan.desc}</p>
+                <div className="flex items-end gap-1">
+                  <span className={`text-4xl font-extrabold ${plan.featured ? 'text-white' : 'text-[#2D3748]'}`}>
+                    {formatPrice((plan.prices as Record<string, number>)[currency])}
+                  </span>
+                  {(plan.prices as Record<string, number>)[currency] > 0 && (
+                    <span className={`text-sm mb-1 ${plan.featured ? 'text-white/60' : 'text-[#718096]'}`}>/mes</span>
+                  )}
+                </div>
+              </div>
+
+              <ul className="space-y-3 flex-1 mb-8">
+                {plan.features.map(f => (
+                  <li key={f.label} className="flex items-start gap-2.5 text-sm">
+                    <span className={`mt-0.5 flex-shrink-0 ${f.included ? 'text-[#00A86B]' : plan.featured ? 'text-white/20' : 'text-[#CBD5E0]'}`}>
+                      {f.included ? '✓' : '✗'}
+                    </span>
+                    <span className={f.included ? (plan.featured ? 'text-white/90' : 'text-[#2D3748]') : (plan.featured ? 'text-white/30' : 'text-[#CBD5E0]')}>
+                      {f.label}
+                      {f.note && f.included && (
+                        <span className={`ml-1 text-xs ${plan.featured ? 'text-[#1BCDD1]' : 'text-[#00A86B]'}`}>· {f.note}</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/login"
+                className={`block text-center font-bold py-3 rounded-2xl transition-colors ${
+                  plan.featured
+                    ? 'bg-[#00A86B] text-white hover:bg-[#009660]'
+                    : 'bg-[#F2F4F7] text-[#2D3748] hover:bg-[#E2E8F0]'
+                }`}
+              >
+                {plan.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-center text-sm text-[#718096] mt-8">Sin contratos. Cancelás cuando quieras.</p>
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [perfil, setPerfil] = useState<'candidato' | 'emprendedor'>('candidato');
@@ -102,6 +276,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
             <a href="#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</a>
             <a href="#como-funciona" className="hover:text-[#2D3748] transition-colors">Cómo funciona</a>
+            <a href="#precios" className="hover:text-[#2D3748] transition-colors">Precios</a>
             <Link href="/webinars" className="hover:text-[#2D3748] transition-colors">Webinars</Link>
           </div>
           <Link
@@ -314,6 +489,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* PRICING */}
+      <PricingSection />
 
       {/* WEBINARS TEASER */}
       <section className="py-20 px-5 bg-gradient-to-br from-[#E6F7F1] to-[#E7FAFB]">
