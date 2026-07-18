@@ -148,10 +148,9 @@ Pirai es una aplicación de búsqueda de empleo y desarrollo de carrera para pro
 6. Busca o crea el usuario en Airtable
 7. Redirige con los datos de sesión
 
-### Migración de usuarios viejos
-- Algunos usuarios tenían IDs de Clerk (sistema anterior)
-- El callback de Google detecta si no encuentra por Google ID e intenta buscar por email
-- Si lo encuentra, actualiza el `user_id` al Google ID nuevo
+### Fallback por email
+- Si el callback de Google no encuentra un usuario por Google ID, busca por email como fallback
+- Si lo encuentra, actualiza el `user_id` al Google ID actual — cubre casos de usuarios con registros duplicados o incompletos
 
 ---
 
