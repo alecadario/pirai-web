@@ -21,6 +21,12 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/webinars — list upcoming webinars
 export async function GET() {
+  if (!AT_KEY || !AT_BASE) {
+    return NextResponse.json({
+      error: 'Missing env vars',
+      _debug: { AT_KEY_set: !!AT_KEY, AT_BASE_set: !!AT_BASE }
+    }, { status: 500 });
+  }
   try {
     const params = new URLSearchParams();
     params.set('sort[0][field]', 'fecha');
