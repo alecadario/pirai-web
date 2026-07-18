@@ -2,12 +2,22 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Target, Zap, BookOpen, Sparkles, Users, BarChart3,
   ChevronRight, Smartphone, Monitor, ArrowRight,
-  Briefcase, Building2,
+  Briefcase, Building2, ChevronLeft, Calendar,
 } from 'lucide-react';
+
+const SCREENS = [
+  { src: '/screen-tudia.png', label: 'Tu día', desc: 'Cada mañana Piraí te dice exactamente qué hacer: a quién escribir, con quién hacer follow-up y qué priorizar.' },
+  { src: '/screen-prospectos.png', label: 'Prospectos', desc: 'Buscá empresas por industria y país. Agregálas a tu pipeline con un clic.' },
+  { src: '/screen-empleos.png', label: 'Empleos', desc: 'Ofertas de trabajo reales para que postules directo desde la app.' },
+  { src: '/screen-marca.png', label: 'Marca Personal', desc: 'Analizá tu perfil con IA y conocé tus fortalezas, oportunidades de mejora y chances reales de conseguir lo que buscás.' },
+  { src: '/screen-eventos.png', label: 'Eventos', desc: 'Registrá los eventos de networking a los que vas y hacé seguimiento de cada contacto que conocés.' },
+  { src: '/screen-cv.png', label: 'CV', desc: 'Subí tu CV y dejá que la IA lo analice para ayudarte a destacarte.' },
+  { src: '/screen-insights.png', label: 'Insights', desc: 'Métricas claras de tu actividad: tasa de respuesta, racha de días activos y progreso real.' },
+];
 
 const CONTENT = {
   candidato: {
@@ -60,10 +70,200 @@ const CONTENT = {
   },
 };
 
+const CURRENCIES = [
+  { code: 'USD', symbol: 'US$', label: 'Dólares (USD)' },
+  { code: 'EUR', symbol: '€',   label: 'Euros (EUR)' },
+  { code: 'ARS', symbol: 'AR$', label: 'Pesos argentinos (ARS)' },
+  { code: 'MXN', symbol: 'MX$', label: 'Pesos mexicanos (MXN)' },
+  { code: 'BOB', symbol: 'Bs.', label: 'Bolivianos (BOB)' },
+];
+
+const PLANS_DATA = [
+  {
+    key: 'gratis',
+    name: 'Gratis',
+    desc: 'Para empezar y explorar',
+    prices: { USD: 0, EUR: 0, ARS: 0, MXN: 0, BOB: 0 },
+    cta: 'Empezar gratis',
+    featured: false,
+    features: [
+      { label: 'CRM de empresas y contactos', included: true },
+      { label: 'Pipeline de búsqueda', included: true },
+      { label: 'Acciones diarias', included: true },
+      { label: 'Mensajes con IA', included: true, note: '10 por semana' },
+      { label: 'Análisis de CV', included: true, note: '5 por semana' },
+      { label: 'Preparación de entrevistas', included: true, note: '1 por semana' },
+      { label: 'Búsqueda de prospectos', included: true, note: '5 búsquedas' },
+      { label: 'Insights y métricas', included: true },
+      { label: 'Webinars gratuitos', included: true },
+      { label: 'Marca personal con IA', included: false },
+    ],
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    desc: 'Para búsquedas activas',
+    prices: { USD: 3.99, EUR: 3.69, ARS: 3800, MXN: 68, BOB: 28 },
+    cta: 'Empezar con Pro',
+    featured: true,
+    features: [
+      { label: 'CRM de empresas y contactos', included: true },
+      { label: 'Pipeline de búsqueda', included: true },
+      { label: 'Acciones diarias', included: true },
+      { label: 'Mensajes con IA', included: true, note: '25 por semana' },
+      { label: 'Análisis de CV', included: true, note: '10 por semana' },
+      { label: 'Preparación de entrevistas', included: true, note: 'Ilimitada' },
+      { label: 'Búsqueda de prospectos', included: true, note: '20 búsquedas' },
+      { label: 'Insights y métricas', included: true },
+      { label: 'Webinars gratuitos', included: true },
+      { label: 'Marca personal con IA', included: true },
+    ],
+  },
+  {
+    key: 'acelerado',
+    name: 'Acelerado',
+    desc: 'Sin límites, máximo resultado',
+    prices: { USD: 9.99, EUR: 9.19, ARS: 9500, MXN: 170, BOB: 69 },
+    cta: 'Empezar Acelerado',
+    featured: false,
+    features: [
+      { label: 'CRM de empresas y contactos', included: true },
+      { label: 'Pipeline de búsqueda', included: true },
+      { label: 'Acciones diarias', included: true },
+      { label: 'Mensajes con IA', included: true, note: 'Ilimitado' },
+      { label: 'Análisis de CV', included: true, note: 'Ilimitado' },
+      { label: 'Preparación de entrevistas', included: true, note: 'Ilimitada' },
+      { label: 'Búsqueda de prospectos', included: true, note: 'Ilimitada' },
+      { label: 'Insights y métricas', included: true },
+      { label: 'Webinars gratuitos', included: true },
+      { label: 'Marca personal con IA', included: true },
+    ],
+  },
+];
+
+function PricingSection() {
+  const [currency, setCurrency] = useState('USD');
+  const cur = CURRENCIES.find(c => c.code === currency)!;
+
+  function formatPrice(price: number) {
+    if (price === 0) return 'Gratis';
+    if (currency === 'ARS' || currency === 'MXN' || currency === 'BOB') {
+      return `${cur.symbol}${Math.round(price).toLocaleString('es')}`;
+    }
+    return `${cur.symbol}${price.toFixed(2)}`;
+  }
+
+  return (
+    <section id="precios" className="py-24 px-5 bg-white">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">Precios</span>
+          <h2 className="text-4xl font-extrabold text-[#2D3748] mb-4">Simple y transparente</h2>
+          <p className="text-lg text-[#718096] mb-8">Empezá gratis. Escalá cuando estés listo.</p>
+
+          {/* selector de moneda */}
+          <div className="inline-flex items-center gap-2 bg-[#F2F4F7] rounded-2xl p-1">
+            {CURRENCIES.map(c => (
+              <button
+                key={c.code}
+                onClick={() => setCurrency(c.code)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  currency === c.code
+                    ? 'bg-white text-[#2D3748] shadow-sm'
+                    : 'text-[#718096] hover:text-[#2D3748]'
+                }`}
+              >
+                {c.code}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {PLANS_DATA.map(plan => (
+            <div
+              key={plan.key}
+              className={`relative rounded-3xl p-8 flex flex-col ${
+                plan.featured
+                  ? 'bg-[#1A2332] text-white shadow-2xl scale-105'
+                  : 'bg-white border border-[#E2E8F0]'
+              }`}
+            >
+              {plan.featured && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <span className="bg-[#00A86B] text-white text-xs font-bold px-4 py-1 rounded-full">Más popular</span>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <h3 className={`text-xl font-extrabold mb-1 ${plan.featured ? 'text-white' : 'text-[#2D3748]'}`}>{plan.name}</h3>
+                <p className={`text-sm mb-4 ${plan.featured ? 'text-white/60' : 'text-[#718096]'}`}>{plan.desc}</p>
+                <div className="flex items-end gap-1">
+                  <span className={`text-4xl font-extrabold ${plan.featured ? 'text-white' : 'text-[#2D3748]'}`}>
+                    {formatPrice((plan.prices as Record<string, number>)[currency])}
+                  </span>
+                  {(plan.prices as Record<string, number>)[currency] > 0 && (
+                    <span className={`text-sm mb-1 ${plan.featured ? 'text-white/60' : 'text-[#718096]'}`}>/mes</span>
+                  )}
+                </div>
+              </div>
+
+              <ul className="space-y-3 flex-1 mb-8">
+                {plan.features.map(f => (
+                  <li key={f.label} className="flex items-start gap-2.5 text-sm">
+                    <span className={`mt-0.5 flex-shrink-0 ${f.included ? 'text-[#00A86B]' : plan.featured ? 'text-white/20' : 'text-[#CBD5E0]'}`}>
+                      {f.included ? '✓' : '✗'}
+                    </span>
+                    <span className={f.included ? (plan.featured ? 'text-white/90' : 'text-[#2D3748]') : (plan.featured ? 'text-white/30' : 'text-[#CBD5E0]')}>
+                      {f.label}
+                      {f.note && f.included && (
+                        <span className={`ml-1 text-xs ${plan.featured ? 'text-[#1BCDD1]' : 'text-[#00A86B]'}`}>· {f.note}</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/login"
+                className={`block text-center font-bold py-3 rounded-2xl transition-colors ${
+                  plan.featured
+                    ? 'bg-[#00A86B] text-white hover:bg-[#009660]'
+                    : 'bg-[#F2F4F7] text-[#2D3748] hover:bg-[#E2E8F0]'
+                }`}
+              >
+                {plan.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-center text-sm text-[#718096] mt-8">Sin contratos. Cancelás cuando quieras.</p>
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [perfil, setPerfil] = useState<'candidato' | 'emprendedor'>('candidato');
+  const [screenIdx, setScreenIdx] = useState(0);
+  const [webinars, setWebinars] = useState<{ id: string; titulo: string; fecha: string; hora: string }[]>([]);
   const c = CONTENT[perfil];
+
+  const prevScreen = useCallback(() => setScreenIdx(i => (i - 1 + SCREENS.length) % SCREENS.length), []);
+  const nextScreen = useCallback(() => setScreenIdx(i => (i + 1) % SCREENS.length), []);
+
+  useEffect(() => {
+    const t = setInterval(nextScreen, 4500);
+    return () => clearInterval(t);
+  }, [nextScreen]);
+
+  useEffect(() => {
+    fetch('/api/webinars').then(r => r.json()).then(d => {
+      if (d.webinars) setWebinars(d.webinars.slice(0, 1));
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -76,6 +276,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
             <a href="#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</a>
             <a href="#como-funciona" className="hover:text-[#2D3748] transition-colors">Cómo funciona</a>
+            <a href="#precios" className="hover:text-[#2D3748] transition-colors">Precios</a>
             <Link href="/webinars" className="hover:text-[#2D3748] transition-colors">Webinars</Link>
           </div>
           <Link
@@ -178,24 +379,35 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <p className="mt-5 text-sm text-white/40">Gratis para empezar · Sin tarjeta de crédito</p>
+          <p className="mt-5 text-sm text-white/40">Gratis para empezar · Sin tarjeta de crédito · +100 usuarios en beta</p>
         </div>
       </section>
 
       {/* SOCIAL PROOF */}
-      <section className="bg-[#F2F4F7] py-12 px-5">
-        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-10 text-center">
-          {[
-            { num: '500+', label: 'usuarios en beta' },
-            { num: '12k+', label: 'actividades registradas' },
-            { num: '3x', label: 'más resultados' },
-            { num: '0€', label: 'para empezar' },
-          ].map(({ num, label }) => (
-            <div key={label}>
-              <p className="text-3xl font-extrabold text-[#00A86B]">{num}</p>
-              <p className="text-sm text-[#718096] mt-0.5">{label}</p>
-            </div>
-          ))}
+      <section className="bg-[#F2F4F7] py-16 px-5">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-10">Lo que dicen nuestros usuarios</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              { quote: 'Está buenísima. Me gusta que te acompañe en todo el camino, con tips, con cosas. No es solo una herramienta. Está muy, muy buena.', name: 'Eduardo', role: 'Empresario' },
+              { quote: 'Me encantó. Supera al excel que yo tenía para hacer seguimiento a los trabajos que me postulaba.', name: 'Karla', role: 'HR Recruiter' },
+              { quote: 'Antes no sabía cómo escribirle a los reclutadores para dar seguimiento a mis postulaciones. Ahora la app me ayuda.', name: 'Bernardo', role: 'Revenue Operations' },
+            ].map(({ quote, name, role }) => (
+              <div key={name} className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm flex flex-col gap-4">
+                <p className="text-[#2D3748] text-sm leading-relaxed flex-1">"{quote}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#00A86B]/10 flex items-center justify-center text-[#00A86B] font-bold text-sm flex-shrink-0">
+                    {name[0]}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#2D3748] text-sm">{name}</p>
+                    <p className="text-xs text-[#718096]">{role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-sm text-[#718096] mt-10">Más de <span className="font-bold text-[#2D3748]">100 personas</span> ya organizaron su búsqueda con Piraí · <span className="text-[#00A86B] font-semibold">Gratis para empezar</span></p>
         </div>
       </section>
 
@@ -225,6 +437,61 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* SCREENSHOTS */}
+      <section className="py-20 px-5 bg-[#F8FAFB]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">La app por dentro</span>
+            <h2 className="text-3xl font-extrabold text-[#2D3748]">Todo lo que necesitás, en un solo lugar</h2>
+          </div>
+          {/* Carousel */}
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center gap-4 w-full max-w-sm mx-auto">
+              <button
+                onClick={prevScreen}
+                className="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-[#E2E8F0] shadow flex items-center justify-center hover:bg-[#F0F4F8] transition-colors"
+                aria-label="Anterior"
+              >
+                <ChevronLeft size={20} className="text-[#2D3748]" />
+              </button>
+              <div className="flex-1 flex flex-col items-center gap-3">
+                <div className="rounded-3xl overflow-hidden shadow-xl border border-[#E2E8F0] w-48">
+                  <Image
+                    src={SCREENS[screenIdx].src}
+                    alt={SCREENS[screenIdx].label}
+                    width={300}
+                    height={600}
+                    className="w-full h-auto object-cover"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={nextScreen}
+                className="flex-shrink-0 w-10 h-10 rounded-full bg-white border border-[#E2E8F0] shadow flex items-center justify-center hover:bg-[#F0F4F8] transition-colors"
+                aria-label="Siguiente"
+              >
+                <ChevronRight size={20} className="text-[#2D3748]" />
+              </button>
+            </div>
+            <div className="text-center max-w-sm mx-auto">
+              <p className="font-bold text-[#2D3748] text-lg">{SCREENS[screenIdx].label}</p>
+              <p className="text-sm text-[#718096] mt-1 leading-relaxed">{SCREENS[screenIdx].desc}</p>
+            </div>
+            {/* Dots */}
+            <div className="flex gap-2">
+              {SCREENS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setScreenIdx(i)}
+                  className={`w-2 h-2 rounded-full transition-colors ${i === screenIdx ? 'bg-[#00A86B]' : 'bg-[#CBD5E0]'}`}
+                  aria-label={`Ir a pantalla ${i + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CÓMO FUNCIONA */}
       <section id="como-funciona" className="py-24 px-5 bg-[#1A2332]">
         <div className="max-w-4xl mx-auto">
@@ -250,6 +517,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* PRICING */}
+      <PricingSection />
+
       {/* WEBINARS TEASER */}
       <section className="py-20 px-5 bg-gradient-to-br from-[#E6F7F1] to-[#E7FAFB]">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-10">
@@ -269,19 +539,21 @@ export default function LandingPage() {
               Ver próximos webinars <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="w-full md:w-64 flex-shrink-0">
-            <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm">
-              <div className="w-10 h-10 rounded-2xl bg-[#00A86B]/10 flex items-center justify-center mb-4">
-                <Sparkles className="w-5 h-5 text-[#00A86B]" />
+          {webinars.length > 0 && (
+            <div className="w-full md:w-64 flex-shrink-0">
+              <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm">
+                <div className="w-10 h-10 rounded-2xl bg-[#00A86B]/10 flex items-center justify-center mb-4">
+                  <Calendar className="w-5 h-5 text-[#00A86B]" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-1">Próximo webinar</p>
+                <p className="font-bold text-[#2D3748] mb-1">{webinars[0].titulo}</p>
+                <p className="text-xs text-[#718096]">{webinars[0].fecha} · {webinars[0].hora} · Online · Gratis</p>
+                <Link href="/webinars" className="mt-4 block text-center text-xs font-semibold bg-[#00A86B]/10 text-[#00A86B] py-2 rounded-xl hover:bg-[#00A86B]/20 transition-colors">
+                  Me anoto →
+                </Link>
               </div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-1">Próximo webinar</p>
-              <p className="font-bold text-[#2D3748] mb-1">Cómo negociar tu salario</p>
-              <p className="text-xs text-[#718096]">Agosto 2026 · Online · Gratis</p>
-              <Link href="/webinars" className="mt-4 block text-center text-xs font-semibold bg-[#00A86B]/10 text-[#00A86B] py-2 rounded-xl hover:bg-[#00A86B]/20 transition-colors">
-                Me anoto →
-              </Link>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -290,7 +562,7 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto">
           <h2 className="text-4xl font-extrabold mb-4">¿Empezamos?</h2>
           <p className="text-lg text-white/80 mb-8">
-            Unite a cientos de personas que ya organizaron su camino con Piraí.
+            Unite a más de 100 personas que ya organizaron su búsqueda con Piraí.
             Es gratis, rápido y cambia todo.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
