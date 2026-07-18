@@ -20,50 +20,6 @@ interface Webinar {
   tags: string;
 }
 
-const PLACEHOLDER_WEBINARS: Webinar[] = [
-  {
-    id: 'demo-1',
-    titulo: 'Cómo negociar tu salario sin miedo',
-    descripcion: 'Estrategias reales para negociar con confianza, evitar errores comunes y conseguir el salario que merecés. Con ejemplos concretos y role-play en vivo.',
-    fecha: '2026-08-15',
-    hora: '19:00',
-    speaker: 'Ale Cadario',
-    speaker_bio: 'CEO de Piraí, ex-reclutadora y especialista en carreras.',
-    speaker_linkedin: '',
-    google_calendar_url: '',
-    link_zoom: '',
-    grabacion_url: '',
-    tags: 'negociación,salario',
-  },
-  {
-    id: 'demo-2',
-    titulo: 'LinkedIn que convierte: de perfil muerto a imán de oportunidades',
-    descripcion: 'Qué cambia realmente en un perfil de LinkedIn que atrae recruiters. Revisamos perfiles en vivo y damos feedback directo.',
-    fecha: '2026-09-05',
-    hora: '18:30',
-    speaker: 'Piraí Team',
-    speaker_bio: 'El equipo de Piraí con años de experiencia en selección y búsqueda laboral.',
-    speaker_linkedin: '',
-    google_calendar_url: '',
-    link_zoom: '',
-    grabacion_url: '',
-    tags: 'linkedin,marca personal',
-  },
-  {
-    id: 'demo-3',
-    titulo: 'Cómo sobrevivir (y brillar) en una entrevista técnica',
-    descripcion: 'Preparación mental, estructura de respuestas y qué buscan realmente los entrevistadores del lado tech.',
-    fecha: '2026-09-20',
-    hora: '19:00',
-    speaker: 'Invitado especial',
-    speaker_bio: 'Tech lead con 10+ años de experiencia haciendo entrevistas en empresas top.',
-    speaker_linkedin: '',
-    google_calendar_url: '',
-    link_zoom: '',
-    grabacion_url: '',
-    tags: 'entrevistas,tech',
-  },
-];
 
 function formatFecha(fecha: string) {
   if (!fecha) return '';
@@ -145,10 +101,9 @@ export default function WebinarsPage() {
     fetch('/api/webinars')
       .then(r => r.json())
       .then(d => {
-        if (d.webinars && d.webinars.length > 0) setWebinars(d.webinars);
-        else setWebinars(PLACEHOLDER_WEBINARS);
+        if (d.webinars) setWebinars(d.webinars);
       })
-      .catch(() => setWebinars(PLACEHOLDER_WEBINARS))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
