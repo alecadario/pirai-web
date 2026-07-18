@@ -2,12 +2,22 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Target, Zap, BookOpen, Sparkles, Users, BarChart3,
   ChevronRight, Smartphone, Monitor, ArrowRight,
-  Briefcase, Building2,
+  Briefcase, Building2, ChevronLeft, Calendar,
 } from 'lucide-react';
+
+const SCREENS = [
+  { src: '/screen-tudia.png', label: 'Tu día', desc: 'Cada mañana Piraí te dice exactamente qué hacer: a quién escribir, con quién hacer follow-up y qué priorizar.' },
+  { src: '/screen-prospectos.png', label: 'Prospectos', desc: 'Buscá empresas por industria y país. Agregálas a tu pipeline con un clic.' },
+  { src: '/screen-empleos.png', label: 'Empleos', desc: 'Ofertas de trabajo reales para que postules directo desde la app.' },
+  { src: '/screen-marca.png', label: 'Marca Personal', desc: 'Analizá tu perfil con IA y conocé tus fortalezas, oportunidades de mejora y chances reales de conseguir lo que buscás.' },
+  { src: '/screen-eventos.png', label: 'Eventos', desc: 'Registrá los eventos de networking a los que vas y hacé seguimiento de cada contacto que conocés.' },
+  { src: '/screen-cv.png', label: 'CV', desc: 'Subí tu CV y dejá que la IA lo analice para ayudarte a destacarte.' },
+  { src: '/screen-insights.png', label: 'Insights', desc: 'Métricas claras de tu actividad: tasa de respuesta, racha de días activos y progreso real.' },
+];
 
 const CONTENT = {
   candidato: {
@@ -63,7 +73,23 @@ const CONTENT = {
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [perfil, setPerfil] = useState<'candidato' | 'emprendedor'>('candidato');
+  const [screenIdx, setScreenIdx] = useState(0);
+  const [webinars, setWebinars] = useState<{ id: string; titulo: string; fecha: string; hora: string }[]>([]);
   const c = CONTENT[perfil];
+
+  const prevScreen = useCallback(() => setScreenIdx(i => (i - 1 + SCREENS.length) % SCREENS.length), []);
+  const nextScreen = useCallback(() => setScreenIdx(i => (i + 1) % SCREENS.length), []);
+
+  useEffect(() => {
+    const t = setInterval(nextScreen, 4500);
+    return () => clearInterval(t);
+  }, [nextScreen]);
+
+  useEffect(() => {
+    fetch('/api/webinars').then(r => r.json()).then(d => {
+      if (d.webinars) setWebinars(d.webinars.slice(0, 1));
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -308,19 +334,21 @@ export default function LandingPage() {
               Ver próximos webinars <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="w-full md:w-64 flex-shrink-0">
-            <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm">
-              <div className="w-10 h-10 rounded-2xl bg-[#00A86B]/10 flex items-center justify-center mb-4">
-                <Sparkles className="w-5 h-5 text-[#00A86B]" />
+          {webinars.length > 0 && (
+            <div className="w-full md:w-64 flex-shrink-0">
+              <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm">
+                <div className="w-10 h-10 rounded-2xl bg-[#00A86B]/10 flex items-center justify-center mb-4">
+                  <Calendar className="w-5 h-5 text-[#00A86B]" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-1">Próximo webinar</p>
+                <p className="font-bold text-[#2D3748] mb-1">{webinars[0].titulo}</p>
+                <p className="text-xs text-[#718096]">{webinars[0].fecha} · {webinars[0].hora} · Online · Gratis</p>
+                <Link href="/webinars" className="mt-4 block text-center text-xs font-semibold bg-[#00A86B]/10 text-[#00A86B] py-2 rounded-xl hover:bg-[#00A86B]/20 transition-colors">
+                  Me anoto →
+                </Link>
               </div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-1">Próximo webinar</p>
-              <p className="font-bold text-[#2D3748] mb-1">Cómo negociar tu salario</p>
-              <p className="text-xs text-[#718096]">Agosto 2026 · Online · Gratis</p>
-              <Link href="/webinars" className="mt-4 block text-center text-xs font-semibold bg-[#00A86B]/10 text-[#00A86B] py-2 rounded-xl hover:bg-[#00A86B]/20 transition-colors">
-                Me anoto →
-              </Link>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
