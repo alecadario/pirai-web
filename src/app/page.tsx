@@ -262,45 +262,30 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* SCREENSHOTS CARRUSEL */}
+      {/* SCREENSHOTS */}
       <section className="py-20 px-5 bg-[#F8FAFB]">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">La app por dentro</span>
             <h2 className="text-3xl font-extrabold text-[#2D3748]">Todo lo que necesitás, en un solo lugar</h2>
           </div>
-          <div className="flex flex-col md:flex-row items-center gap-10">
-            {/* imagen */}
-            <div className="relative w-56 flex-shrink-0 mx-auto">
-              <div className="rounded-3xl overflow-hidden shadow-2xl border border-[#E2E8F0]">
-                <Image
-                  key={SCREENS[screenIdx].src}
-                  src={SCREENS[screenIdx].src}
-                  alt={SCREENS[screenIdx].label}
-                  width={300}
-                  height={600}
-                  className="w-full h-auto object-cover"
-                />
-              </div>
-            </div>
-            {/* texto + controles */}
-            <div className="flex-1 text-center md:text-left">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-2">{SCREENS[screenIdx].label}</p>
-              <p className="text-xl font-extrabold text-[#2D3748] mb-3 leading-snug">{SCREENS[screenIdx].desc}</p>
-              <div className="flex items-center justify-center md:justify-start gap-3 mt-6">
-                <button onClick={prevScreen} className="w-10 h-10 rounded-full border border-[#E2E8F0] bg-white flex items-center justify-center hover:shadow-md transition-shadow text-[#718096]">
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <div className="flex gap-1.5">
-                  {SCREENS.map((_, i) => (
-                    <button key={i} onClick={() => setScreenIdx(i)} className={`w-2 h-2 rounded-full transition-all ${i === screenIdx ? 'bg-[#00A86B] w-5' : 'bg-[#CBD5E0]'}`} />
-                  ))}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[
+              { src: '/screen-tudia.png', label: 'Tu día' },
+              { src: '/screen-prospectos.png', label: 'Prospectos' },
+              { src: '/screen-empleos.png', label: 'Empleos' },
+              { src: '/screen-marca.png', label: 'Marca Personal' },
+              { src: '/screen-eventos.png', label: 'Eventos' },
+              { src: '/screen-cv.png', label: 'CV' },
+              { src: '/screen-insights.png', label: 'Insights' },
+            ].map(({ src, label }) => (
+              <div key={src} className="flex flex-col items-center gap-2">
+                <div className="rounded-2xl overflow-hidden shadow-md border border-[#E2E8F0] w-full">
+                  <Image src={src} alt={label} width={300} height={600} className="w-full h-auto object-cover" />
                 </div>
-                <button onClick={nextScreen} className="w-10 h-10 rounded-full border border-[#E2E8F0] bg-white flex items-center justify-center hover:shadow-md transition-shadow text-[#718096]">
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+                <span className="text-xs font-semibold text-[#718096]">{label}</span>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
