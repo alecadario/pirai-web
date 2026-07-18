@@ -178,24 +178,35 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <p className="mt-5 text-sm text-white/40">Gratis para empezar · Sin tarjeta de crédito</p>
+          <p className="mt-5 text-sm text-white/40">Gratis para empezar · Sin tarjeta de crédito · +100 usuarios en beta</p>
         </div>
       </section>
 
       {/* SOCIAL PROOF */}
-      <section className="bg-[#F2F4F7] py-12 px-5">
-        <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-10 text-center">
-          {[
-            { num: '500+', label: 'usuarios en beta' },
-            { num: '12k+', label: 'actividades registradas' },
-            { num: '3x', label: 'más resultados' },
-            { num: '0€', label: 'para empezar' },
-          ].map(({ num, label }) => (
-            <div key={label}>
-              <p className="text-3xl font-extrabold text-[#00A86B]">{num}</p>
-              <p className="text-sm text-[#718096] mt-0.5">{label}</p>
-            </div>
-          ))}
+      <section className="bg-[#F2F4F7] py-16 px-5">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-10">Lo que dicen nuestros usuarios</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              { quote: 'Está buenísima. Me gusta que te acompañe en todo el camino, con tips, con cosas. No es solo una herramienta. Está muy, muy buena.', name: 'Eduardo', role: 'Empresario' },
+              { quote: 'Me encantó. Supera al excel que yo tenía para hacer seguimiento a los trabajos que me postulaba.', name: 'Karla', role: 'HR Recruiter' },
+              { quote: 'Antes no sabía cómo escribirle a los reclutadores para dar seguimiento a mis postulaciones. Ahora la app me ayuda.', name: 'Bernardo', role: 'Revenue Operations' },
+            ].map(({ quote, name, role }) => (
+              <div key={name} className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm flex flex-col gap-4">
+                <p className="text-[#2D3748] text-sm leading-relaxed flex-1">"{quote}"</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#00A86B]/10 flex items-center justify-center text-[#00A86B] font-bold text-sm flex-shrink-0">
+                    {name[0]}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#2D3748] text-sm">{name}</p>
+                    <p className="text-xs text-[#718096]">{role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-sm text-[#718096] mt-10">Más de <span className="font-bold text-[#2D3748]">100 personas</span> ya organizaron su búsqueda con Piraí · <span className="text-[#00A86B] font-semibold">Gratis para empezar</span></p>
         </div>
       </section>
 
@@ -290,7 +301,7 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto">
           <h2 className="text-4xl font-extrabold mb-4">¿Empezamos?</h2>
           <p className="text-lg text-white/80 mb-8">
-            Unite a cientos de personas que ya organizaron su camino con Piraí.
+            Unite a más de 100 personas que ya organizaron su búsqueda con Piraí.
             Es gratis, rápido y cambia todo.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
