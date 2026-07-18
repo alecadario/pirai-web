@@ -22,11 +22,12 @@ export const dynamic = 'force-dynamic';
 // GET /api/webinars — list upcoming webinars
 export async function GET() {
   try {
-    const params = new URLSearchParams({ filterByFormula: `OR({activo}=1, {activo}=TRUE())` });
+    const params = new URLSearchParams();
     params.set('sort[0][field]', 'fecha');
     params.set('sort[0][direction]', 'asc');
     const d = await at(`/${encodeURIComponent('Webinars')}?${params}`);
-    const webinars = (d.records || []).map((r: { id: string; fields: Record<string, unknown> }) => ({
+    const raw = d.records || [];
+    const webinars = raw.map((r: { id: string; fields: Record<string, unknown> }) => ({
       id: r.id,
       titulo: r.fields.titulo || '',
       descripcion: r.fields.descripcion || '',
@@ -40,7 +41,7 @@ export async function GET() {
       grabacion_url: r.fields.grabacion_url || '',
       tags: r.fields.tags || '',
     }));
-    return NextResponse.json({ webinars });
+    return NextResponse.json({ webinars, _debug: { total: raw.length, fields: raw[0]?.fields } });
   } catch (err) {
     console.error('[webinars GET]', (err as Error).message);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
