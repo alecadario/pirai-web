@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 // GET /api/webinars — list upcoming webinars
 export async function GET() {
   try {
-    const params = new URLSearchParams({ filterByFormula: `{activo}=1` });
+    const params = new URLSearchParams({ filterByFormula: `OR({activo}=1, {activo}=TRUE())` });
     params.set('sort[0][field]', 'fecha');
     params.set('sort[0][direction]', 'asc');
     const d = await at(`/${encodeURIComponent('Webinars')}?${params}`);
@@ -42,6 +42,7 @@ export async function GET() {
     }));
     return NextResponse.json({ webinars });
   } catch (err) {
+    console.error('[webinars GET]', (err as Error).message);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
