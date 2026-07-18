@@ -236,6 +236,34 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* SCREENSHOTS */}
+      <section className="py-20 px-5 bg-[#F8FAFB]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#00A86B] mb-3 block">La app por dentro</span>
+            <h2 className="text-3xl font-extrabold text-[#2D3748]">Todo lo que necesitás, en un solo lugar</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[
+              { src: '/screen-tudia.png', label: 'Tu día' },
+              { src: '/screen-prospectos.png', label: 'Prospectos' },
+              { src: '/screen-empleos.png', label: 'Empleos' },
+              { src: '/screen-marca.png', label: 'Marca Personal' },
+              { src: '/screen-eventos.png', label: 'Eventos' },
+              { src: '/screen-cv.png', label: 'CV' },
+              { src: '/screen-insights.png', label: 'Insights' },
+            ].map(({ src, label }) => (
+              <div key={src} className="flex flex-col items-center gap-2">
+                <div className="rounded-2xl overflow-hidden shadow-md border border-[#E2E8F0] w-full">
+                  <Image src={src} alt={label} width={300} height={600} className="w-full h-auto object-cover" />
+                </div>
+                <span className="text-xs font-semibold text-[#718096]">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CÓMO FUNCIONA */}
       <section id="como-funciona" className="py-24 px-5 bg-[#1A2332]">
         <div className="max-w-4xl mx-auto">
