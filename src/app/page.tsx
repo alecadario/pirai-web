@@ -254,6 +254,10 @@ export default function LandingPage() {
   const prevScreen = useCallback(() => setScreenIdx(i => (i - 1 + SCREENS.length) % SCREENS.length), []);
   const nextScreen = useCallback(() => setScreenIdx(i => (i + 1) % SCREENS.length), []);
 
+  const scrollTo = useCallback((id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
   useEffect(() => {
     const t = setInterval(nextScreen, 4500);
     return () => clearInterval(t);
@@ -274,9 +278,9 @@ export default function LandingPage() {
             <Image src="/pirai-nombre.png" alt="Piraí" width={500} height={500} className="h-20 w-auto object-contain" />
           </div>
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
-            <a href="#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</a>
-            <a href="#como-funciona" className="hover:text-[#2D3748] transition-colors">Cómo funciona</a>
-            <a href="#precios" className="hover:text-[#2D3748] transition-colors">Precios</a>
+            <button onClick={() => scrollTo('que-es')} className="hover:text-[#2D3748] transition-colors cursor-pointer">¿Qué es?</button>
+            <button onClick={() => scrollTo('como-funciona')} className="hover:text-[#2D3748] transition-colors cursor-pointer">Cómo funciona</button>
+            <button onClick={() => scrollTo('precios')} className="hover:text-[#2D3748] transition-colors cursor-pointer">Precios</button>
             <Link href="/webinars" className="hover:text-[#2D3748] transition-colors">Webinars</Link>
           </div>
           <Link
@@ -295,8 +299,8 @@ export default function LandingPage() {
         </div>
         {menuOpen && (
           <div className="md:hidden px-5 pb-4 flex flex-col gap-3 text-sm font-medium border-t border-gray-100 pt-4">
-            <a href="#que-es" onClick={() => setMenuOpen(false)} className="text-[#718096]">¿Qué es?</a>
-            <a href="#como-funciona" onClick={() => setMenuOpen(false)} className="text-[#718096]">Cómo funciona</a>
+            <button onClick={() => { setMenuOpen(false); scrollTo('que-es'); }} className="text-[#718096] text-left">¿Qué es?</button>
+            <button onClick={() => { setMenuOpen(false); scrollTo('como-funciona'); }} className="text-[#718096] text-left">Cómo funciona</button>
             <Link href="/webinars" onClick={() => setMenuOpen(false)} className="text-[#718096]">Webinars</Link>
             <Link href="/login" className="text-[#00A86B] font-semibold">Entrar →</Link>
           </div>
