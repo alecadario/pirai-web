@@ -21,19 +21,12 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/webinars — list upcoming webinars
 export async function GET() {
-  if (!AT_KEY || !AT_BASE) {
-    return NextResponse.json({
-      error: 'Missing env vars',
-      _debug: { AT_KEY_set: !!AT_KEY, AT_BASE_set: !!AT_BASE }
-    }, { status: 500 });
-  }
   try {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams({ filterByFormula: `{activo}=TRUE()` });
     params.set('sort[0][field]', 'fecha');
     params.set('sort[0][direction]', 'asc');
     const d = await at(`/${encodeURIComponent('Webinars')}?${params}`);
-    const raw = d.records || [];
-    const webinars = raw.map((r: { id: string; fields: Record<string, unknown> }) => ({
+    const webinars = (d.records || []).map((r: { id: string; fields: Record<string, unknown> }) => ({
       id: r.id,
       titulo: r.fields.titulo || '',
       descripcion: r.fields.descripcion || '',
@@ -47,9 +40,8 @@ export async function GET() {
       grabacion_url: r.fields.grabacion_url || '',
       tags: r.fields.tags || '',
     }));
-    return NextResponse.json({ webinars, _debug: { total: raw.length, fields: raw[0]?.fields } });
+    return NextResponse.json({ webinars });
   } catch (err) {
-    console.error('[webinars GET]', (err as Error).message);
     return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }
