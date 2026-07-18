@@ -1,7 +1,7 @@
 # Pirai — Master Reference Document
 
 > Documento de referencia completo para Claude y colaboradores.
-> Última actualización: julio 2026.
+> Última actualización: 18 julio 2026.
 
 ---
 
@@ -371,10 +371,81 @@ git push -u origin claude/jobs-app-friday-default-view-kgtho2
 
 ---
 
-## 15. Cosas que NO tenemos / fueron removidas
+## 15. Planes y precios
+
+Definidos en `pirai/lib/plans.js` (fuente de verdad única):
+
+| Plan | USD/mes | Búsquedas | Chat IA | CV | Cuota semanal |
+|---|---|---|---|---|---|
+| **Gratis** | $0 | 5 | 10 msgs | 5 análisis | 1 prep entrevista |
+| **Pro** | $3.99 | 20 | 25 msgs | 10 análisis | ilimitado |
+| **Acelerado** | $9.99 | 999 | ilimitado | ilimitado | ilimitado |
+| **Impulso** | $100 | 999 | ilimitado | ilimitado | ilimitado + llamada mensual |
+
+Precios en otras monedas (hardcodeados en `plans.js`):
+
+| Plan | BOB | ARS | MXN |
+|---|---|---|---|
+| Pro | 28 | 3800 | 68 |
+| Acelerado | 69 | 9500 | 170 |
+| Impulso | 691 | 95000 | 1700 |
+
+- **Impulso** no se muestra en la landing pública — es para coaching 1:1
+- `lib/quota.js` verifica cuotas antes de cada operación costosa (OpenAI, etc.)
+- Admin `ale@alecadario.com` tiene plan Impulso con 999999 usos sin restricciones
+
+---
+
+## 16. Landing page — pirai.es (page.tsx)
+
+### Secciones
+1. **Nav** — logo + links de scroll suave (sin hash en URL) + botón Entrar
+2. **Hero** — toggle candidato / emprendedor, CTA principal
+3. **¿Qué es?** — descripción del producto con features
+4. **Screenshots (Carrusel)** — 7 pantallas de la app con descripción, flechas, dots, auto-avance cada 4.5s
+5. **Cómo funciona** — 4 pasos
+6. **Precios** — 3 planes (Gratis / Pro / Acelerado) con selector de moneda (USD / EUR / ARS / MXN / BOB)
+7. **Webinars teaser** — solo aparece si hay webinars activos en Airtable
+8. **Testimonios** — 3 testimonios reales: Eduardo (empresario), Karla (HR recruiter), Bernardo (revenue ops)
+9. **Footer**
+
+### Detalles técnicos
+- Screenshots en `/public/screen-*.png` — subidas directamente al repo vía GitHub
+- Webinar teaser: `fetch('/api/webinars')` al cargar, muestra solo si hay datos reales
+- Precios: hardcodeados en el componente `PricingSection` dentro del mismo `page.tsx`
+- Nav items (¿Qué es?, Cómo funciona, Precios) usan `scrollIntoView` por JS — la URL no cambia al hacer clic
+
+---
+
+## 17. Webinars
+
+### Tabla Airtable: `Webinars`
+Campos: `titulo`, `descripcion`, `fecha` (YYYY-MM-DD), `hora`, `speaker`, `speaker_bio`, `speaker_linkedin`, `google_calendar_url`, `link_zoom`, `grabacion_url`, `tags`, `activo` (checkbox)
+
+### API: `/api/webinars` (pirai-web)
+- **GET** — devuelve webinars donde `{activo}=TRUE()`, ordenados por fecha asc
+- **POST** — registra un usuario a un webinar (guarda en tabla `WebinarRegistrations`)
+  - Campos: `nombre`, `email`, `webinar_id`, `webinar_titulo`, `fecha_registro`
+  - Verifica duplicados antes de crear
+
+### Tabla Airtable: `WebinarRegistrations`
+Campos: `nombre`, `email`, `webinar_id`, `webinar_titulo`, `fecha_registro`
+
+### Variables de entorno necesarias en pirai-web (Netlify)
+- `AIRTABLE_API_KEY` — el token de Airtable (sin prefijo NEXT_PUBLIC_)
+- `AIRTABLE_BASE_ID` — ID de la base
+
+### Importante
+- El token de Airtable en pirai-web es el **mismo** que en piraiapp.com
+- Si se regenera el token en Airtable, hay que actualizarlo en **ambos** sitios de Netlify
+
+---
+
+## 18. Cosas que NO tenemos / fueron removidas
 
 - ❌ **Clerk** — auth anterior, completamente removido
 - ❌ **Web Push (VAPID)** — push notifications web, removido (usamos APNS)
 - ❌ **Exchange Rates dinámicos** — los precios son hardcodeados en `lib/plans.js`
 - ❌ **Team features** — código de teams/invitaciones removido
 - ❌ `NEXT_PUBLIC_AIRTABLE_API_KEY` — removida de Netlify (era un riesgo de seguridad crítico, exponía la clave en el bundle público)
+- ❌ **Webinars hardcodeados (PLACEHOLDER_WEBINARS)** — removidos de `webinars/page.tsx`, ahora solo muestra datos reales de Airtable
