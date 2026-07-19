@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
     if (age_range !== undefined) fields.age_range = age_range;
     if (passion !== undefined) fields.passion = passion;
     if (impact !== undefined) fields.impact = impact;
-    if (services_description !== undefined) fields.services_description = services_description;
     if (cv_text !== undefined) fields.cv_text = cv_text;
     if (profile_photo !== undefined) fields.profile_photo = profile_photo;
     if (certifications !== undefined) fields.certifications = certifications;
@@ -57,7 +56,9 @@ export async function POST(req: NextRequest) {
     if (genero !== undefined) fields.genero = genero;
 
     const existing = user.fields.onboarding_answers ? JSON.parse(user.fields.onboarding_answers) : {};
-    fields.onboarding_answers = JSON.stringify({ ...existing, ...fields });
+    const merged = { ...existing, ...fields };
+    if (services_description !== undefined) merged.services_description = services_description;
+    fields.onboarding_answers = JSON.stringify(merged);
 
     const patchRes = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Users/${user.id}`, {
       method: 'PATCH',
