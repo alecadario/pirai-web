@@ -10,9 +10,16 @@ export async function PATCH(req: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    const text = await res.text();
+    try {
+      const data = JSON.parse(text);
+      return NextResponse.json(data, { status: res.status });
+    } catch {
+      console.error('profile proxy: piraiapp returned non-JSON', res.status, text.slice(0, 500));
+      return NextResponse.json({ error: `Backend error ${res.status}: ${text.slice(0, 200)}` }, { status: 500 });
+    }
   } catch (err) {
+    console.error('profile proxy fetch error:', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
