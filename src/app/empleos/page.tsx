@@ -54,6 +54,7 @@ export default function EmpleosPage() {
   const [tab, setTab] = useState<'buscar' | 'postulaciones'>('buscar');
   const [postulaciones, setPostulaciones] = useState<Postulacion[]>([]);
   const [loadingPostulaciones, setLoadingPostulaciones] = useState(false);
+  const [piraiPostings, setPiraiPostings] = useState<Job[]>([]);
   const searchRef = useRef(false);
   const userId = getUserId();
 
@@ -109,6 +110,26 @@ export default function EmpleosPage() {
     } catch {}
     finally { setLoadingPostulaciones(false); }
   }, [userId]);
+
+  useEffect(() => {
+    fetch('/api/job-postings')
+      .then(r => r.json())
+      .then(d => {
+        const postings: Job[] = (d.results || []).map((p: { id: string; title: string; company: string; location: string; description?: string; applyUrl: string; logo?: string; createdAt?: string }) => ({
+          id: `pirai_${p.id}`,
+          title: p.title,
+          company: p.company,
+          location: p.location,
+          description: p.description,
+          url: p.applyUrl,
+          logo: p.logo,
+          posted: p.createdAt,
+          source: 'pirai',
+        }));
+        setPiraiPostings(postings);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => { search(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab === 'postulaciones') loadPostulaciones(); }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -223,7 +244,18 @@ export default function EmpleosPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {results.map(job => (
+                    {(() => {
+                      const terms = query.split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+                      const filtered = piraiPostings.filter(p => {
+                        const hay = `${p.title} ${p.company} ${p.description} ${p.location}`.toLowerCase();
+                        const keyMatch = !terms.length || terms.every(t => hay.includes(t));
+                        const countryMatch = !country || country === 'remote'
+                          ? true
+                          : (p.location || '').toLowerCase().includes(country.toLowerCase());
+                        return keyMatch && countryMatch;
+                      });
+                      return [...filtered, ...results];
+                    })().map(job => (
                       <JobRow key={job.id} job={job} active={selected?.id === job.id} onClick={() => setSelected(job)} />
                     ))}
                     {hasMore && (
@@ -312,7 +344,12 @@ function JobRow({ job, active, onClick }: { job: Job; active: boolean; onClick: 
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm text-[var(--color-brand-dark)] truncate">{job.title}</p>
+        <div className="flex items-center gap-2">
+          <p className="font-semibold text-sm text-[var(--color-brand-dark)] truncate">{job.title}</p>
+          {job.source === 'pirai' && (
+            <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] border border-[var(--color-pirai-200)]">Piraí</span>
+          )}
+        </div>
         <p className="text-xs text-[var(--color-brand-muted)] truncate">{job.company}</p>
         <div className="flex items-center gap-1 mt-1">
           <MapPin className="w-3 h-3 text-gray-400" />
