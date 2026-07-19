@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const res = await fetch(`${BACKEND}/api/profile`, {
+  // Delegate to the direct Airtable profile handler
+  const res = await fetch(`${req.nextUrl.origin}/api/profile`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
