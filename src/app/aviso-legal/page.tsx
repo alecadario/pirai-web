@@ -18,7 +18,7 @@ export default function AvisoLegalPage() {
         <li><strong>Titular:</strong> Samurai Venture SL</li>
         <li><strong>CIF:</strong> B95986014</li>
         <li><strong>Domicilio social:</strong> Urbanización Lubarrietaondo, 48 – BJ, 48110 Gatika (Vizcaya), España.</li>
-        <li><strong>Correo electrónico:</strong> <a href="mailto:hola@pirai.es" style={{ color: '#00A86B' }}>hola@pirai.es</a></li>
+        <li><strong>Correo electrónico:</strong> <a href="mailto:pirai@alecadario.com" style={{ color: '#00A86B' }}>pirai@alecadario.com</a></li>
         <li><strong>Sitio web:</strong> https://pirai.es</li>
       </ul>
 

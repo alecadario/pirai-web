@@ -402,6 +402,7 @@ export default function WebinarsPage() {
             <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
             <Link href="/terminos" className="hover:text-white transition-colors">Términos</Link>
             <Link href="/aviso-legal" className="hover:text-white transition-colors">Aviso legal</Link>
+            <Link href="/cookies" className="hover:text-white transition-colors">Cookies</Link>
           </div>
         </div>
       </footer>

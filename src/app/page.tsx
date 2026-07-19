@@ -225,7 +225,7 @@ function PricingSection() {
               </ul>
 
               <Link
-                href="/login"
+                href={plan.key === 'gratis' ? '/login' : `/login?plan=${plan.key}`}
                 className={`block text-center font-bold py-3 rounded-2xl transition-colors ${
                   plan.featured
                     ? 'bg-[#00A86B] text-white hover:bg-[#009660]'
@@ -289,7 +289,7 @@ export default function LandingPage() {
           >
             Entrar <ArrowRight className="w-3.5 h-3.5" />
           </Link>
-          <button className="md:hidden text-[#718096]" onClick={() => setMenuOpen(!menuOpen)}>
+          <button className="md:hidden text-[#718096]" aria-label="Abrir menú" onClick={() => setMenuOpen(!menuOpen)}>
             <div className="w-5 space-y-1.5">
               <span className="block h-0.5 bg-current rounded" />
               <span className="block h-0.5 bg-current rounded" />
@@ -646,6 +646,7 @@ export default function LandingPage() {
             <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
             <Link href="/terminos" className="hover:text-white transition-colors">Términos</Link>
             <Link href="/aviso-legal" className="hover:text-white transition-colors">Aviso legal</Link>
+            <Link href="/cookies" className="hover:text-white transition-colors">Cookies</Link>
           </div>
         </div>
       </footer>

@@ -12,7 +12,7 @@ export default function PrivacyPage() {
 
       <p>
         Piraí (&quot;nosotros&quot;, &quot;la app&quot;) es una aplicación de productividad profesional
-        desarrollada por Alejandra Cadario. Esta política describe cómo recopilamos, usamos
+        desarrollada por Samurai Venture SL. Esta política describe cómo recopilamos, usamos
         y protegemos tu información cuando utilizás nuestra aplicación web y móvil.
       </p>
 
@@ -119,11 +119,11 @@ export default function PrivacyPage() {
       <h2 style={{ fontSize: 20, marginTop: 32 }}>9. Contacto</h2>
       <p>
         Si tenés preguntas sobre esta política, escribinos a:{' '}
-        <a href="mailto:ale@alecadario.com" style={{ color: '#6366f1' }}>ale@alecadario.com</a>
+        <a href="mailto:pirai@alecadario.com" style={{ color: '#6366f1' }}>pirai@alecadario.com</a>
       </p>
 
       <div style={{ marginTop: 48, paddingTop: 24, borderTop: '1px solid #eee', color: '#999', fontSize: 14 }}>
-        © 2026 Piraí — Alejandra Cadario
+        © 2026 Piraí — Samurai Venture SL
       </div>
     </main>
   );
