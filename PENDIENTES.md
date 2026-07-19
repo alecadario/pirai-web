@@ -23,8 +23,12 @@
 - [ ] **Contraste CTA** — Botón verde principal tiene ratio 3.08:1, mínimo WCAG AA es 4.5:1.
 - [ ] **Contradicción de cifras** — Home dice "+100 usuarios en beta" Y "miles de candidatos activos". Hay que unificar.
 
-### Infraestructura — Planificar con tiempo
-- [ ] **Migración Airtable → Supabase** — límite actual 50,000 registros (Plan Team). Con ~130–480 registros por usuario activo, el techo real es ~100–200 usuarios antes de saturar. Activities es el cuello de botella (crece sin límite). Migrar rutas API a Postgres/Supabase cuando se llegue a ~80 usuarios activos.
+### Infraestructura — Migración Airtable → Supabase
+- [ ] **Paso 1 (vos)**: Crear cuenta en supabase.com, nuevo proyecto "pirai", copiar `Project URL` + `service_role key` desde Settings → API
+- [ ] **Paso 2 (vos)**: Agregar en Netlify (piraiapp.com) las env vars: `SUPABASE_URL` y `SUPABASE_SERVICE_KEY`
+- [ ] **Paso 3 (Claude)**: Crear tabla `Activities` en Supabase, script de migración desde Airtable, reemplazar `/api/activities` → Supabase, testear
+- [ ] Repetir por tabla: Companies → Contacts → Users → Teams
+- **Cuándo**: antes de llegar a 30 usuarios activos. Free tier de Supabase aguanta 500–1,000 usuarios (500 MB). Costo: $0 hasta escala grande, luego $25/mes (similar a Airtable Team).
 
 ### S3 — Backlog
 - [ ] Toggle "Soy emprendedor" incompleto — cambia hero pero no testimonios, precios ni footer.
