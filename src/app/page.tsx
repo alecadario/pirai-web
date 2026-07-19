@@ -347,7 +347,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-5xl md:text-6xl font-extrabold leading-tight mb-6">
-            {c.headline}<br />
+            {c.headline}{' '}<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#1BCDD1] to-[#4DCB9D]">
               {c.highlight}
             </span>
@@ -643,6 +643,9 @@ export default function LandingPage() {
           <div className="flex items-center gap-5">
             <Link href="/webinars" className="hover:text-white transition-colors">Webinars</Link>
             <Link href="/login" className="hover:text-white transition-colors">Acceder</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
+            <Link href="/terminos" className="hover:text-white transition-colors">Términos</Link>
+            <Link href="/aviso-legal" className="hover:text-white transition-colors">Aviso legal</Link>
           </div>
         </div>
       </footer>

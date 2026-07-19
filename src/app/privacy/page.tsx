@@ -6,8 +6,9 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '40px 20px', fontFamily: 'system-ui, sans-serif', color: '#1a1a2e', lineHeight: 1.7 }}>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>Política de Privacidad</h1>
-      <p style={{ color: '#666', marginBottom: 32 }}>Última actualización: 16 de julio de 2026</p>
+      <a href="/" style={{ color: '#00A86B', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}>← Volver a inicio</a>
+      <h1 style={{ fontSize: 28, marginBottom: 8, marginTop: 24 }}>Política de Privacidad</h1>
+      <p style={{ color: '#666', marginBottom: 32 }}>Última actualización: julio de 2026</p>
 
       <p>
         Piraí (&quot;nosotros&quot;, &quot;la app&quot;) es una aplicación de productividad profesional

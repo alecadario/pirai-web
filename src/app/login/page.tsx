@@ -105,14 +105,17 @@ export default function LoginPage() {
             </div>
 
             <p style={{ fontSize: '12px', color: '#718096', textAlign: 'center', lineHeight: '1.7' }}>
-              Al ingresar aceptás nuestros términos y política de privacidad.{' '}
+              Al ingresar aceptás nuestros{' '}
+              <a href="/terminos" style={{ color: '#00A86B', textDecoration: 'none' }}>términos</a>
+              {' '}y{' '}
+              <a href="/privacy" style={{ color: '#00A86B', textDecoration: 'none' }}>política de privacidad</a>.{' '}
               Tu información está segura y nunca la compartimos con terceros.
             </p>
 
             <div style={{ marginTop: '48px', textAlign: 'center', fontSize: '13px', color: '#718096' }}>
               ¿Necesitás ayuda?{' '}
-              <a href="mailto:pirai@alecadario.com" style={{ color: '#00A86B', textDecoration: 'none', fontWeight: '600' }}>
-                pirai@alecadario.com
+              <a href="mailto:hola@pirai.es" style={{ color: '#00A86B', textDecoration: 'none', fontWeight: '600' }}>
+                hola@pirai.es
               </a>
             </div>
           </div>

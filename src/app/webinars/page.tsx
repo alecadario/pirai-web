@@ -24,7 +24,8 @@ interface Webinar {
 function formatFecha(fecha: string) {
   if (!fecha) return '';
   const d = new Date(fecha + 'T00:00:00');
-  return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const str = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase().replace(/\b(de|del|y)\b/gi, m => m.toLowerCase());
 }
 
 function isPast(fecha: string) {
@@ -146,9 +147,12 @@ export default function WebinarsPage() {
           <Link href="/" className="flex items-center gap-2.5">
             <Image src="/pirai-nombre.png" alt="Piraí" width={500} height={500} className="h-20 w-auto object-contain" />
           </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-sm text-[#718096] hover:text-[#2D3748] transition-colors">Inicio</Link>
-            <Link href="/login" className="text-sm font-semibold bg-[#00A86B] text-white px-4 py-2 rounded-xl hover:bg-[#009660] transition-colors">
+          <div className="hidden md:flex items-center gap-5 text-sm font-medium text-[#718096]">
+            <Link href="/" className="hover:text-[#2D3748] transition-colors">Inicio</Link>
+            <Link href="/#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</Link>
+            <Link href="/#como-funciona" className="hover:text-[#2D3748] transition-colors">Cómo funciona</Link>
+            <Link href="/#precios" className="hover:text-[#2D3748] transition-colors">Precios</Link>
+            <Link href="/login" className="font-semibold bg-[#00A86B] text-white px-4 py-2 rounded-xl hover:bg-[#009660] transition-colors">
               Entrar
             </Link>
           </div>
@@ -385,6 +389,19 @@ export default function WebinarsPage() {
           </div>
         </div>
       )}
+
+      {/* FOOTER */}
+      <footer className="bg-[#1A2332] text-white/50 py-8 px-5 mt-16">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
+          <p>© 2026 Piraí</p>
+          <div className="flex items-center gap-5">
+            <Link href="/" className="hover:text-white transition-colors">Inicio</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacidad</Link>
+            <Link href="/terminos" className="hover:text-white transition-colors">Términos</Link>
+            <Link href="/aviso-legal" className="hover:text-white transition-colors">Aviso legal</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
