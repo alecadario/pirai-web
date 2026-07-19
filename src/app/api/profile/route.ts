@@ -21,7 +21,10 @@ async function patchUser(recordId: string, fields: Record<string, unknown>) {
     headers: atHeaders(),
     body: JSON.stringify({ fields }),
   });
-  if (!r.ok) throw new Error(`Airtable patch error: ${r.status}`);
+  if (!r.ok) {
+    const errText = await r.text();
+    throw new Error(`Airtable patch error ${r.status}: ${errText.slice(0, 300)}`);
+  }
   return r.json();
 }
 
