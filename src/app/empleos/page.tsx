@@ -4,9 +4,7 @@ import AppShell from '@/components/layout/AppShell';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getUserId } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { Loader2, Search, ExternalLink, MapPin, Building2, X, CheckCircle2 } from 'lucide-react';
-
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://piraiapp.com';
+import { Loader2, Search, ExternalLink, MapPin, Building2, X, CheckCircle2, Plus } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -29,6 +27,18 @@ interface Postulacion {
   empresaId?: string;
 }
 
+interface Prospect {
+  id: string;
+  name: string;
+  industry?: string;
+  country?: string;
+  location?: string;
+  website?: string;
+  description?: string;
+  size?: string;
+  logo_url?: string;
+}
+
 const COUNTRIES = [
   { value: '', label: 'Todo el mundo' },
   { value: 'remote', label: 'Solo remoto' },
@@ -40,7 +50,208 @@ const COUNTRIES = [
   { value: 'usa', label: 'Estados Unidos' },
 ];
 
+const INDUSTRIES = [
+  'Software Development', 'Marketing', 'Sales', 'Design', 'Data', 'Finance / Legal',
+  'Human Resources', 'Customer Service', 'Product', 'DevOps / Sysadmin',
+  'Business & Management', 'Writing', 'Otra',
+];
+
 export default function EmpleosPage() {
+  const [isBizUser, setIsBizUser] = useState<boolean | null>(null);
+  const userId = getUserId();
+
+  useEffect(() => {
+    if (!userId) { setIsBizUser(false); return; }
+    fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`)
+      .then(r => r.json())
+      .then(d => {
+        const fields = d?.record?.fields ?? {};
+        let stage = fields.stage ?? '';
+        if (!stage && fields.onboarding_answers) {
+          try { stage = JSON.parse(fields.onboarding_answers).stage ?? ''; } catch { /* */ }
+        }
+        setIsBizUser(['emprendedor', 'freelancer', 'empresa'].includes(stage));
+      })
+      .catch(() => setIsBizUser(false));
+  }, [userId]);
+
+  if (isBizUser === null) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center h-full py-32">
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-pirai-500)]" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  return isBizUser
+    ? <ProspectosView userId={userId} />
+    : <EmpleosView userId={userId} />;
+}
+
+// ─── PROSPECTOS (emprendedores) ───────────────────────────────────────────────
+
+function ProspectosView({ userId }: { userId: string | null }) {
+  const [name, setName] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [country, setCountry] = useState('');
+  const [results, setResults] = useState<Prospect[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
+
+  const search = async () => {
+    setLoading(true);
+    setError('');
+    setSearched(true);
+    try {
+      const res = await fetch('/api/companies/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, industry, country }),
+      }).then(r => r.json());
+      if (res.error) throw new Error(res.error);
+      setResults(res.companies || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error en la búsqueda');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToPipeline = async (p: Prospect) => {
+    if (!userId) return;
+    try {
+      await fetch('/api/crm/empresa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          name: p.name,
+          status: 'investigando',
+          priority: 'media',
+          notes: p.description ?? '',
+          country: p.country ?? p.location ?? '',
+          industry: p.industry ?? '',
+          website: p.website ?? '',
+        }),
+      });
+      showToast(`✓ ${p.name} agregada al pipeline`);
+    } catch {
+      showToast('Error al agregar');
+    }
+  };
+
+  return (
+    <AppShell>
+      <div className="flex h-full min-h-screen">
+        <div className="flex-1 flex flex-col">
+          <div className="bg-white border-b border-[var(--color-brand-border)] p-6">
+            <h1 className="text-xl font-bold text-[var(--color-brand-dark)] mb-1">Prospectos</h1>
+            <p className="text-sm text-[var(--color-brand-muted)] mb-4">Encontrá empresas que pueden ser tus clientes</p>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && search()}
+                    placeholder="Nombre de empresa..."
+                    className="w-full pl-9 pr-4 py-2.5 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
+                  />
+                </div>
+                <select
+                  value={industry}
+                  onChange={e => setIndustry(e.target.value)}
+                  className="border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-white"
+                >
+                  <option value="">Todas las industrias</option>
+                  {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                </select>
+                <select
+                  value={country}
+                  onChange={e => setCountry(e.target.value)}
+                  className="border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-white"
+                >
+                  {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                <button
+                  onClick={search}
+                  disabled={loading}
+                  className="bg-[var(--color-pirai-500)] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors flex items-center gap-2"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  Buscar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto p-4">
+            {error && <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600 mb-4">{error}</div>}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-16 text-[var(--color-brand-muted)]">
+                <Loader2 className="w-6 h-6 animate-spin mb-3 text-[var(--color-pirai-500)]" />
+                <p className="text-sm">Buscando prospectos...</p>
+              </div>
+            ) : searched && results.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center text-[var(--color-brand-muted)]">
+                <Building2 className="w-10 h-10 mb-3 opacity-30" />
+                <p className="text-sm font-medium">Sin resultados</p>
+                <p className="text-xs mt-1">Probá con otros filtros.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 max-w-3xl">
+                {results.map(p => (
+                  <div key={p.id} className="bg-white border border-[var(--color-brand-border)] rounded-xl p-4 flex items-start gap-3">
+                    {p.logo_url ? (
+                      <img src={p.logo_url} alt={p.name} className="w-10 h-10 rounded-xl object-contain bg-white border border-gray-100 shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-[var(--color-pirai-50)] flex items-center justify-center shrink-0 text-[var(--color-pirai-600)] font-bold text-sm">
+                        {(p.name || '?')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-[var(--color-brand-dark)]">{p.name}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        {p.industry && <span className="text-xs bg-[var(--color-pirai-50)] text-[var(--color-pirai-600)] px-2 py-0.5 rounded-full">{p.industry}</span>}
+                        {(p.country || p.location) && <span className="text-xs text-gray-400 flex items-center gap-0.5"><MapPin className="w-3 h-3" />{p.country || p.location}</span>}
+                        {p.size && <span className="text-xs text-gray-400">{p.size} emp.</span>}
+                      </div>
+                      {p.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{p.description}</p>}
+                      {p.website && <p className="text-xs text-[var(--color-pirai-600)] mt-0.5 truncate">{p.website}</p>}
+                    </div>
+                    <button
+                      onClick={() => addToPipeline(p)}
+                      className="shrink-0 flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[var(--color-pirai-50)] text-[var(--color-pirai-700)] border border-[var(--color-pirai-200)] hover:bg-[var(--color-pirai-100)] transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Pipeline
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[var(--color-brand-dark)] text-white px-5 py-3 rounded-2xl text-sm font-semibold shadow-xl z-50 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-green-400" /> {toast}
+        </div>
+      )}
+    </AppShell>
+  );
+}
+
+// ─── EMPLEOS (buscadores de trabajo) ─────────────────────────────────────────
+
+function EmpleosView({ userId }: { userId: string | null }) {
   const [query, setQuery] = useState('');
   const [country, setCountry] = useState('');
   const [results, setResults] = useState<Job[]>([]);
@@ -56,12 +267,8 @@ export default function EmpleosPage() {
   const [loadingPostulaciones, setLoadingPostulaciones] = useState(false);
   const [piraiPostings, setPiraiPostings] = useState<Job[]>([]);
   const searchRef = useRef(false);
-  const userId = getUserId();
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3500);
-  };
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const search = useCallback(async (loadMore = false) => {
     if (searchRef.current) return;
@@ -96,18 +303,15 @@ export default function EmpleosPage() {
     try {
       const res = await fetch(`/api/bootstrap?userId=${encodeURIComponent(userId)}&diagnosis=&stage=`).then(r => r.json());
       const acts: Array<{ id: string; tipo: string; notas?: string; fecha?: string; respuesta?: boolean; empresaId?: string; empresaNombre?: string }> = res.activities ?? [];
-      const postuls = acts
-        .filter(a => a.tipo === 'postulacion')
-        .map(a => ({
-          id: a.id,
-          empresaNombre: a.empresaNombre ?? '',
-          notas: a.notas ?? '',
-          fecha: a.fecha ?? '',
-          respuesta: a.respuesta ?? false,
-          empresaId: a.empresaId,
-        }));
-      setPostulaciones(postuls);
-    } catch {}
+      setPostulaciones(acts.filter(a => a.tipo === 'postulacion').map(a => ({
+        id: a.id,
+        empresaNombre: a.empresaNombre ?? '',
+        notas: a.notas ?? '',
+        fecha: a.fecha ?? '',
+        respuesta: a.respuesta ?? false,
+        empresaId: a.empresaId,
+      })));
+    } catch { /* */ }
     finally { setLoadingPostulaciones(false); }
   }, [userId]);
 
@@ -115,7 +319,7 @@ export default function EmpleosPage() {
     fetch('/api/job-postings')
       .then(r => r.json())
       .then(d => {
-        const postings: Job[] = (d.results || []).map((p: { id: string; title: string; company: string; location: string; description?: string; applyUrl: string; logo?: string; createdAt?: string }) => ({
+        setPiraiPostings((d.results || []).map((p: { id: string; title: string; company: string; location: string; description?: string; applyUrl: string; logo?: string; createdAt?: string }) => ({
           id: `pirai_${p.id}`,
           title: p.title,
           company: p.company,
@@ -125,8 +329,7 @@ export default function EmpleosPage() {
           logo: p.logo,
           posted: p.createdAt,
           source: 'pirai',
-        }));
-        setPiraiPostings(postings);
+        })));
       })
       .catch(() => {});
   }, []);
@@ -139,58 +342,31 @@ export default function EmpleosPage() {
     if (!userId) return;
     try {
       const today = new Date().toISOString().split('T')[0];
-      // Create or find company
-      const empresaRes = await fetch(`/api/crm/empresa`, {
+      const empresaRes = await fetch('/api/crm/empresa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          name: job.company,
-          status: 'investigando',
-          priority: 'media',
-          notes: `${job.title}\n${job.url}`,
-          country: job.location,
-        }),
+        body: JSON.stringify({ userId, name: job.company, status: 'investigando', priority: 'media', notes: `${job.title}\n${job.url}`, country: job.location }),
       }).then(r => r.json());
-      const companyId = empresaRes.id ?? empresaRes.empresa?.id ?? null;
-
-      await fetch(`/api/activities`, {
+      await fetch('/api/activities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          tipo: 'postulacion',
-          empresaId: companyId,
-          fecha: today,
-          notas: `Apliqué a: ${job.title}`,
-        }),
+        body: JSON.stringify({ userId, tipo: 'postulacion', empresaId: empresaRes.id ?? empresaRes.empresa?.id ?? null, fecha: today, notas: `Apliqué a: ${job.title}` }),
       });
-
       showToast(`✓ Postulación a ${job.company} registrada en tu CRM`);
     } catch {
-      showToast(`✓ Abriendo postulación...`);
+      showToast('✓ Abriendo postulación...');
     }
   };
 
   return (
     <AppShell>
       <div className="flex h-full min-h-screen">
-        {/* Left panel */}
         <div className="flex-1 flex flex-col border-r border-[var(--color-brand-border)]">
-          {/* Header + tabs */}
           <div className="bg-white border-b border-[var(--color-brand-border)] p-6">
             <h1 className="text-xl font-bold text-[var(--color-brand-dark)] mb-4">Empleos remotos</h1>
             <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setTab('buscar')}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${tab === 'buscar' ? 'bg-[var(--color-pirai-500)] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              >
-                Buscar
-              </button>
-              <button
-                onClick={() => setTab('postulaciones')}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${tab === 'postulaciones' ? 'bg-[var(--color-pirai-500)] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-              >
+              <button onClick={() => setTab('buscar')} className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${tab === 'buscar' ? 'bg-[var(--color-pirai-500)] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Buscar</button>
+              <button onClick={() => setTab('postulaciones')} className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${tab === 'postulaciones' ? 'bg-[var(--color-pirai-500)] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                 Mis postulaciones {postulaciones.length > 0 ? `(${postulaciones.length})` : ''}
               </button>
             </div>
@@ -198,27 +374,13 @@ export default function EmpleosPage() {
               <div className="flex gap-3">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && search()}
-                    placeholder="Rol, empresa, tecnología..."
-                    className="w-full pl-9 pr-4 py-2.5 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]"
-                  />
+                  <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && search()} placeholder="Rol, empresa, tecnología..." className="w-full pl-9 pr-4 py-2.5 border border-[var(--color-brand-border)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)]" />
                   {query && <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="w-3.5 h-3.5 text-gray-400" /></button>}
                 </div>
-                <select
-                  value={country}
-                  onChange={e => setCountry(e.target.value)}
-                  className="border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-white"
-                >
+                <select value={country} onChange={e => setCountry(e.target.value)} className="border border-[var(--color-brand-border)] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-pirai-500)] bg-white">
                   {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
-                <button
-                  onClick={() => search()}
-                  disabled={loading}
-                  className="bg-[var(--color-pirai-500)] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors flex items-center gap-2"
-                >
+                <button onClick={() => search()} disabled={loading} className="bg-[var(--color-pirai-500)] text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] disabled:opacity-60 transition-colors flex items-center gap-2">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   Buscar
                 </button>
@@ -226,7 +388,6 @@ export default function EmpleosPage() {
             )}
           </div>
 
-          {/* Results */}
           <div className="flex-1 overflow-auto p-4">
             {tab === 'buscar' ? (
               <>
@@ -249,9 +410,7 @@ export default function EmpleosPage() {
                       const filtered = piraiPostings.filter(p => {
                         const hay = `${p.title} ${p.company} ${p.description} ${p.location}`.toLowerCase();
                         const keyMatch = !terms.length || terms.every(t => hay.includes(t));
-                        const countryMatch = !country || country === 'remote'
-                          ? true
-                          : (p.location || '').toLowerCase().includes(country.toLowerCase());
+                        const countryMatch = !country || country === 'remote' ? true : (p.location || '').toLowerCase().includes(country.toLowerCase());
                         return keyMatch && countryMatch;
                       });
                       return [...filtered, ...results];
@@ -259,11 +418,7 @@ export default function EmpleosPage() {
                       <JobRow key={job.id} job={job} active={selected?.id === job.id} onClick={() => setSelected(job)} />
                     ))}
                     {hasMore && (
-                      <button
-                        onClick={() => search(true)}
-                        disabled={loading}
-                        className="w-full py-3 text-sm font-semibold text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] rounded-xl transition-colors disabled:opacity-50"
-                      >
+                      <button onClick={() => search(true)} disabled={loading} className="w-full py-3 text-sm font-semibold text-[var(--color-pirai-600)] hover:bg-[var(--color-pirai-50)] rounded-xl transition-colors disabled:opacity-50">
                         {loading ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Cargar más resultados'}
                       </button>
                     )}
@@ -271,14 +426,13 @@ export default function EmpleosPage() {
                 )}
               </>
             ) : (
-              /* Mis postulaciones */
               loadingPostulaciones ? (
                 <div className="flex items-center justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-[var(--color-pirai-500)]" /></div>
               ) : postulaciones.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center text-[var(--color-brand-muted)]">
                   <CheckCircle2 className="w-10 h-10 mb-3 opacity-20" />
                   <p className="text-sm font-medium">Todavía no aplicaste a ningún empleo</p>
-                  <p className="text-xs mt-1">Cuando hagas clic en "Postularme", se guarda acá automáticamente.</p>
+                  <p className="text-xs mt-1">Cuando hagas clic en &quot;Postularme&quot;, se guarda acá automáticamente.</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -292,9 +446,7 @@ export default function EmpleosPage() {
                         <p className="text-xs text-[var(--color-brand-muted)] truncate">{p.notas}</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">{p.fecha}</p>
                       </div>
-                      {p.respuesta && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700 shrink-0">Respondió</span>
-                      )}
+                      {p.respuesta && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700 shrink-0">Respondió</span>}
                     </div>
                   ))}
                 </div>
@@ -303,7 +455,6 @@ export default function EmpleosPage() {
           </div>
         </div>
 
-        {/* Detail panel */}
         <div className="w-[480px] bg-white overflow-auto">
           {selected ? (
             <JobDetail job={selected} onClose={() => setSelected(null)} onApply={handleApply} />
@@ -316,7 +467,6 @@ export default function EmpleosPage() {
         </div>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[var(--color-brand-dark)] text-white px-5 py-3 rounded-2xl text-sm font-semibold shadow-xl z-50 flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-green-400" /> {toast}
@@ -328,14 +478,7 @@ export default function EmpleosPage() {
 
 function JobRow({ job, active, onClick }: { job: Job; active: boolean; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all ${
-        active
-          ? 'bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)]'
-          : 'bg-white border border-transparent hover:border-[var(--color-brand-border)] hover:shadow-sm'
-      }`}
-    >
+    <button onClick={onClick} className={`w-full flex items-start gap-3 p-3 rounded-xl text-left transition-all ${active ? 'bg-[var(--color-pirai-50)] border border-[var(--color-pirai-200)]' : 'bg-white border border-transparent hover:border-[var(--color-brand-border)] hover:shadow-sm'}`}>
       {job.logo ? (
         <img src={job.logo} alt={job.company} className="w-10 h-10 rounded-xl object-contain border border-gray-100 bg-white shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
       ) : (
@@ -362,13 +505,6 @@ function JobRow({ job, active, onClick }: { job: Job; active: boolean; onClick: 
 
 function JobDetail({ job, onClose, onApply }: { job: Job; onClose: () => void; onApply: (job: Job) => void }) {
   const [applying, setApplying] = useState(false);
-
-  const handleApply = async () => {
-    setApplying(true);
-    await onApply(job);
-    setApplying(false);
-  };
-
   return (
     <div className="p-6">
       <div className="flex items-start justify-between mb-5">
@@ -387,34 +523,23 @@ function JobDetail({ job, onClose, onApply }: { job: Job; onClose: () => void; o
         </div>
         <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg shrink-0"><X className="w-4 h-4 text-gray-400" /></button>
       </div>
-
       <div className="flex items-center gap-2 mb-5">
         <MapPin className="w-4 h-4 text-gray-400" />
         <span className="text-sm text-[var(--color-brand-muted)]">{job.location}</span>
-        {job.posted && (
-          <>
-            <span className="text-gray-300">·</span>
-            <span className="text-xs text-gray-400">{new Date(job.posted).toLocaleDateString('es')}</span>
-          </>
-        )}
+        {job.posted && <><span className="text-gray-300">·</span><span className="text-xs text-gray-400">{new Date(job.posted).toLocaleDateString('es')}</span></>}
       </div>
-
       <button
-        onClick={handleApply}
+        onClick={async () => { setApplying(true); await onApply(job); setApplying(false); }}
         disabled={applying}
         className="w-full mb-6 flex items-center justify-center gap-2 bg-[var(--color-pirai-500)] text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-[var(--color-pirai-600)] transition-colors disabled:opacity-60"
       >
         {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
         Postularme
       </button>
-
       {job.description && (
         <div>
           <h3 className="text-xs font-semibold text-[var(--color-brand-muted)] uppercase tracking-wider mb-3">Descripción</h3>
-          <div
-            className="text-sm text-[var(--color-brand-dark)] leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-1 [&_h2]:font-bold [&_h2]:text-base [&_h2]:mt-4 [&_h3]:font-semibold [&_h3]:mt-3 [&_p]:mb-2 [&_strong]:font-semibold"
-            dangerouslySetInnerHTML={{ __html: job.description }}
-          />
+          <div className="text-sm text-[var(--color-brand-dark)] leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-1 [&_h2]:font-bold [&_h2]:text-base [&_h2]:mt-4 [&_h3]:font-semibold [&_h3]:mt-3 [&_p]:mb-2 [&_strong]:font-semibold" dangerouslySetInnerHTML={{ __html: job.description }} />
         </div>
       )}
     </div>
