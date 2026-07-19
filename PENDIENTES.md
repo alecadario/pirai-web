@@ -23,6 +23,9 @@
 - [ ] **Contraste CTA** — Botón verde principal tiene ratio 3.08:1, mínimo WCAG AA es 4.5:1.
 - [ ] **Contradicción de cifras** — Home dice "+100 usuarios en beta" Y "miles de candidatos activos". Hay que unificar.
 
+### Infraestructura — Planificar con tiempo
+- [ ] **Migración Airtable → Supabase** — límite actual 50,000 registros (Plan Team). Con ~130–480 registros por usuario activo, el techo real es ~100–200 usuarios antes de saturar. Activities es el cuello de botella (crece sin límite). Migrar rutas API a Postgres/Supabase cuando se llegue a ~80 usuarios activos.
+
 ### S3 — Backlog
 - [ ] Toggle "Soy emprendedor" incompleto — cambia hero pero no testimonios, precios ni footer.
 - [ ] Fechas con "De Julio De" por text-transform: capitalize en CSS.
