@@ -29,11 +29,11 @@ export default function TerminosPage() {
       <ul style={{ paddingLeft: 20 }}>
         <li><strong>Pasarela de pago:</strong> los pagos se procesan a través de <strong>Stripe</strong>. Samurai Venture SL no almacena los datos completos de tu tarjeta.</li>
         <li><strong>Renovación automática:</strong> las suscripciones se renuevan automáticamente por periodos mensuales al precio vigente, salvo cancelación previa.</li>
-        <li><strong>Cancelación:</strong> podés cancelar en cualquier momento desde tu cuenta o escribiendo a hola@pirai.es. La cancelación surte efecto al final del periodo ya abonado.</li>
+        <li><strong>Cancelación:</strong> podés cancelar en cualquier momento desde tu cuenta o escribiendo a pirai@alecadario.com. La cancelación surte efecto al final del periodo ya abonado.</li>
       </ul>
 
       <h2 style={{ fontSize: 18, marginTop: 32 }}>3.6. Derecho de desistimiento (consumidores)</h2>
-      <p>Si sos consumidor, disponés de un plazo de <strong>14 días naturales</strong> desde la contratación para desistir sin necesidad de justificación, escribiendo a hola@pirai.es. Al contratar un plan de pago solicitás y consentís expresamente que la prestación del servicio comience de inmediato.</p>
+      <p>Si sos consumidor, disponés de un plazo de <strong>14 días naturales</strong> desde la contratación para desistir sin necesidad de justificación, escribiendo a pirai@alecadario.com. Al contratar un plan de pago solicitás y consentís expresamente que la prestación del servicio comience de inmediato.</p>
 
       <h2 style={{ fontSize: 18, marginTop: 32 }}>3.7. Política de reembolso</h2>
       <p>Salvo el derecho de desistimiento legal descrito en 3.6 y las garantías legales de conformidad, <strong>los importes abonados por periodos de suscripción no son reembolsables</strong>, incluidos los casos de cancelación anticipada o de no utilización del servicio durante el periodo contratado.</p>
@@ -52,7 +52,7 @@ export default function TerminosPage() {
       <p>Conforme al Reglamento (UE) 524/2013, los consumidores pueden acceder a la plataforma de resolución de litigios en línea de la Comisión Europea: <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" style={{ color: '#00A86B' }}>https://ec.europa.eu/consumers/odr</a></p>
 
       <p style={{ marginTop: 40, color: '#666', fontSize: 13 }}>
-        Titular: Samurai Venture SL · CIF B95986014 · Urb. Lubarrietaondo 48-BJ, 48110 Gatika (Vizcaya) · <a href="mailto:hola@pirai.es" style={{ color: '#00A86B' }}>hola@pirai.es</a>
+        Titular: Samurai Venture SL · CIF B95986014 · Urb. Lubarrietaondo 48-BJ, 48110 Gatika (Vizcaya) · <a href="mailto:pirai@alecadario.com" style={{ color: '#00A86B' }}>pirai@alecadario.com</a>
       </p>
     </main>
   );
