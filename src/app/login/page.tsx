@@ -114,8 +114,8 @@ export default function LoginPage() {
 
             <div style={{ marginTop: '48px', textAlign: 'center', fontSize: '13px', color: '#718096' }}>
               ¿Necesitás ayuda?{' '}
-              <a href="mailto:hola@pirai.es" style={{ color: '#00A86B', textDecoration: 'none', fontWeight: '600' }}>
-                hola@pirai.es
+              <a href="mailto:pirai@alecadario.com" style={{ color: '#00A86B', textDecoration: 'none', fontWeight: '600' }}>
+                pirai@alecadario.com
               </a>
             </div>
           </div>
