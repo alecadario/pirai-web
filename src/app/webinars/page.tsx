@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Calendar, Clock, User, ChevronRight, X, Loader2, CheckCircle, Play, Tag, ExternalLink, CalendarPlus, Download } from 'lucide-react';
+import { Calendar, Clock, User, ChevronRight, X, Loader2, CheckCircle, Play, Tag, ExternalLink, CalendarPlus, Download, ArrowRight } from 'lucide-react';
 
 interface Webinar {
   id: string;
@@ -142,20 +142,23 @@ export default function WebinarsPage() {
   return (
     <div className="min-h-screen bg-[#F2F4F7] font-sans">
       {/* NAV */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-5 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
+      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center">
             <Image src="/pirai-nombre.png" alt="Piraí" width={500} height={500} className="h-20 w-auto object-contain" />
           </Link>
-          <div className="hidden md:flex items-center gap-5 text-sm font-medium text-[#718096]">
-            <Link href="/" className="hover:text-[#2D3748] transition-colors">Inicio</Link>
+          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#718096]">
             <Link href="/#que-es" className="hover:text-[#2D3748] transition-colors">¿Qué es?</Link>
             <Link href="/#como-funciona" className="hover:text-[#2D3748] transition-colors">Cómo funciona</Link>
             <Link href="/#precios" className="hover:text-[#2D3748] transition-colors">Precios</Link>
-            <Link href="/login" className="font-semibold bg-[#00A86B] text-white px-4 py-2 rounded-xl hover:bg-[#009660] transition-colors">
-              Entrar
-            </Link>
+            <Link href="/webinars" className="text-[#2D3748] font-semibold">Webinars</Link>
           </div>
+          <Link
+            href="/login"
+            className="hidden md:inline-flex items-center gap-1.5 bg-[#00A86B] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#009660] transition-colors"
+          >
+            Entrar <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </nav>
 
