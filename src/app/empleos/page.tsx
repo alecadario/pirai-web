@@ -63,31 +63,25 @@ export default function EmpleosPage() {
   useEffect(() => {
     if (!userId) { setIsBizUser(false); return; }
 
-    // Check localStorage first (updated immediately when user saves profile)
-    const cached = typeof window !== 'undefined' ? localStorage.getItem('pirai_stage') : null;
-    if (cached !== null) {
-      setIsBizUser(['emprendedor', 'freelancer', 'empresa'].includes(cached));
-    }
+    const BIZ = ['emprendedor', 'freelancer', 'empresa'];
 
-    // Always fetch fresh from backend to stay in sync
-    fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`)
-      .then(r => r.json())
-      .then(d => {
-        const fields = d?.record?.fields ?? {};
-        let stage = fields.stage ?? '';
-        if (!stage && fields.onboarding_answers) {
-          try { stage = JSON.parse(fields.onboarding_answers).stage ?? ''; } catch { /* */ }
-        }
-        if (stage) localStorage.setItem('pirai_stage', stage);
-        setIsBizUser(['emprendedor', 'freelancer', 'empresa'].includes(stage));
-      })
-      .catch(() => { if (cached === null) setIsBizUser(false); });
+    const loadStage = () =>
+      fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`)
+        .then(r => r.json())
+        .then(d => {
+          const fields = d?.record?.fields ?? {};
+          let stage = fields.stage ?? '';
+          if (!stage && fields.onboarding_answers) {
+            try { stage = JSON.parse(fields.onboarding_answers).stage ?? ''; } catch { /* */ }
+          }
+          setIsBizUser(BIZ.includes(stage));
+        })
+        .catch(() => setIsBizUser(false));
 
-    // Listen for in-session stage changes (from /perfil page)
-    const handler = (e: Event) => {
-      const stage = (e as CustomEvent<string>).detail ?? '';
-      setIsBizUser(['emprendedor', 'freelancer', 'empresa'].includes(stage));
-    };
+    loadStage();
+
+    // When user saves profile on /perfil, update view without reload
+    const handler = (e: Event) => setIsBizUser(BIZ.includes((e as CustomEvent<string>).detail ?? ''));
     window.addEventListener('pirai:stage-changed', handler);
     return () => window.removeEventListener('pirai:stage-changed', handler);
   }, [userId]);
