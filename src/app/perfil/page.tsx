@@ -21,6 +21,7 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const userId = getUserId();
   const email = getUserEmail();
   const name = getUserName();
@@ -42,19 +43,22 @@ export default function PerfilPage() {
   const save = async () => {
     if (!userId) return;
     setSaving(true);
+    setSaveError('');
     try {
-      await fetch('/api/user/profile', {
+      const res = await fetch('/api/user/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, ...profile }),
       });
-      // Store stage and notify sidebar in same tab
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('pirai_stage', profile.stage ?? '');
         window.dispatchEvent(new CustomEvent('pirai:stage-changed', { detail: profile.stage ?? '' }));
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -92,6 +96,7 @@ export default function PerfilPage() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saved ? 'Guardado' : 'Guardar cambios'}
           </button>
+          {saveError && <p className="text-sm text-red-600 mt-2">{saveError}</p>}
         </div>
 
         {/* Form */}
