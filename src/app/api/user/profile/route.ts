@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, stage, age_range, passion, impact, services_description, cv_text, profile_photo, certifications, ideal_day, genero } = body;
+    const { userId, stage, age_range, passion, impact, services_description, cv_text, profile_photo, certifications, ideal_day, genero, country, city, target_countries, titular } = body;
     if (!userId) return NextResponse.json({ error: 'Falta userId' }, { status: 400 });
 
     // Find user in Airtable
@@ -54,6 +54,10 @@ export async function POST(req: NextRequest) {
     if (certifications !== undefined) fields.certifications = certifications;
     if (ideal_day !== undefined) fields.ideal_day = ideal_day;
     if (genero !== undefined) fields.genero = genero;
+    if (country !== undefined) fields.country = country;
+    if (city !== undefined) fields.city = city;
+    if (target_countries !== undefined) fields.target_countries = Array.isArray(target_countries) ? (target_countries as string[]).join(', ') : target_countries;
+    if (titular !== undefined) fields.titular = titular;
 
     const existing = user.fields.onboarding_answers ? JSON.parse(user.fields.onboarding_answers) : {};
     const merged = { ...existing, ...fields };
