@@ -31,7 +31,7 @@ async function patchUser(recordId: string, fields: Record<string, unknown>) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, stage, age_range, passion, impact, services_description, cv_text, profile_photo, certifications, ideal_day, genero } = body;
+    const { userId, stage, age_range, passion, impact, services_description, cv_text, profile_photo, certifications, ideal_day, genero, onboarding_completed, titular } = body;
     if (!userId) return NextResponse.json({ error: 'Falta userId' }, { status: 400 });
 
     const user = await findUser(userId);
@@ -47,6 +47,8 @@ export async function PATCH(req: NextRequest) {
     if (certifications !== undefined) fields.certifications = certifications;
     if (ideal_day !== undefined) fields.ideal_day = ideal_day;
     if (genero !== undefined) fields.genero = genero;
+    if (onboarding_completed !== undefined) fields.onboarding_completed = onboarding_completed;
+    if (titular !== undefined) fields.titular = titular;
 
     // services_description only exists in onboarding_answers JSON, not as a direct Airtable field
     const existing = user.fields.onboarding_answers ? JSON.parse(user.fields.onboarding_answers) : {};

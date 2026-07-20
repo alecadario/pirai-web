@@ -2,20 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getUserId } from '@/lib/auth';
 import Sidebar from './Sidebar';
+import OnboardingFlow from '@/components/OnboardingFlow';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
 
   useEffect(() => {
     const hasAuthParams = new URLSearchParams(window.location.search).has('pirai_user_id');
 
     if (hasAuthParams) {
-      // AuthHandler is processing the params — wait for it to set localStorage then re-check
       const timer = setTimeout(() => {
-        if (isAuthenticated()) setReady(true);
+        if (isAuthenticated()) checkOnboarding();
         else router.replace('/login');
       }, 400);
       return () => clearTimeout(timer);
@@ -24,11 +25,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated()) {
       router.replace('/login');
     } else {
-      setReady(true);
+      checkOnboarding();
     }
   }, [router]);
 
+  async function checkOnboarding() {
+    const userId = getUserId();
+    if (!userId) { setReady(true); setOnboardingDone(true); return; }
+    try {
+      const res = await fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      const fields = data?.record?.fields ?? {};
+      const completed = Boolean(fields.onboarding_completed);
+      setOnboardingDone(completed);
+    } catch {
+      setOnboardingDone(true); // on error, skip onboarding
+    }
+    setReady(true);
+  }
+
   if (!ready) return null;
+
+  if (onboardingDone === false) {
+    return <OnboardingFlow onComplete={() => setOnboardingDone(true)} />;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-brand-surface)]">
