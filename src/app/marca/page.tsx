@@ -104,9 +104,11 @@ export default function MarcaPage() {
     setCertSaving(false);
   };
 
+  const isBizTab = sharedProfile.stage === 'emprendedor' || sharedProfile.stage === 'freelancer' || sharedProfile.stage === 'empresa';
+
   const TABS = [
     { id: 'perfil' as Tab, label: 'Mi Perfil', icon: User },
-    { id: 'cv' as Tab, label: 'CV con IA ✨', icon: FileText },
+    { id: 'cv' as Tab, label: isBizTab ? 'Portafolio ✨' : 'CV con IA ✨', icon: FileText },
   ];
 
   return (
