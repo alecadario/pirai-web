@@ -661,11 +661,23 @@ export default function DashboardPage() {
               <h3 className="text-xs font-semibold text-[#718096] uppercase tracking-wider mb-3">Recomendaciones para crecer</h3>
               <div className="space-y-2">
                 {visible.map((c, i) => {
-                  const curated = curatedCourses.find(cc =>
-                    cc.title.toLowerCase().includes(c.title.toLowerCase().slice(0, 10)) ||
-                    c.title.toLowerCase().includes(cc.title.toLowerCase().slice(0, 10))
-                  );
-                  const href = curated?.url || `https://www.google.com/search?q=${encodeURIComponent(c.title)}+${encodeURIComponent(c.platform)}+curso`;
+                  const titleWords = c.title.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+                  const curated = curatedCourses.find(cc => {
+                    const ccL = cc.title.toLowerCase();
+                    return titleWords.some(w => ccL.includes(w)) || ccL.includes(c.title.toLowerCase().slice(0, 12));
+                  });
+                  const platformFallback = () => {
+                    const q = encodeURIComponent(c.title);
+                    const p = (c.platform || '').toLowerCase();
+                    if (p.includes('linkedin')) return `https://www.linkedin.com/learning/search?keywords=${q}`;
+                    if (p.includes('coursera')) return `https://www.coursera.org/search?query=${q}`;
+                    if (p.includes('udemy')) return `https://www.udemy.com/courses/search/?q=${q}`;
+                    if (p.includes('youtube')) return `https://www.youtube.com/results?search_query=${q}`;
+                    if (p.includes('platzi')) return `https://platzi.com/buscar/?q=${q}`;
+                    if (p.includes('hubspot')) return `https://academy.hubspot.com/courses?search=${q}`;
+                    return `https://www.google.com/search?q=${q}+${encodeURIComponent(c.platform)}+curso`;
+                  };
+                  const href = (curated?.url && curated.url.startsWith('http')) ? curated.url : platformFallback();
                   const courseTitle = curated?.title || c.title;
                   return (
                     <button key={i} onClick={() => handleCourseClick(courseTitle, c.platform, href, curated?.tags?.join(', ') || '')}
