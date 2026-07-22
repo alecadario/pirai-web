@@ -32,12 +32,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   async function checkOnboarding() {
     const userId = getUserId();
     if (!userId) { setReady(true); setOnboardingDone(true); return; }
+
+    // If already dismissed in this browser, skip the check
+    if (localStorage.getItem(`onboarding_done_${userId}`)) {
+      setReady(true); setOnboardingDone(true); return;
+    }
+
     try {
       const res = await fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`);
       const data = await res.json();
-      const fields = data?.record?.fields ?? {};
-      // Consider onboarding done if explicitly completed OR if user already has profile data (existing users)
-      const completed = Boolean(fields.onboarding_completed) || Boolean(fields.stage) || Boolean(fields.passion) || Boolean(fields.cv_text);
+      const record = data?.record;
+      const fields = record?.fields ?? {};
+
+      // Done if: explicitly completed, OR has any profile data (existing users), OR record exists (registered before onboarding feature)
+      const completed =
+        Boolean(fields.onboarding_completed) ||
+        Boolean(fields.stage) ||
+        Boolean(fields.passion) ||
+        Boolean(fields.cv_text) ||
+        Boolean(fields.titular) ||
+        Boolean(record?.createdTime); // any existing record = already onboarded
+
+      if (completed) localStorage.setItem(`onboarding_done_${userId}`, '1');
       setOnboardingDone(completed);
     } catch {
       setOnboardingDone(true); // on error, skip onboarding
