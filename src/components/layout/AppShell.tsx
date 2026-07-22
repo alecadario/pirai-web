@@ -36,7 +36,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/user-record?userId=${encodeURIComponent(userId)}`);
       const data = await res.json();
       const fields = data?.record?.fields ?? {};
-      const completed = Boolean(fields.onboarding_completed);
+      // Consider onboarding done if explicitly completed OR if user already has profile data (existing users)
+      const completed = Boolean(fields.onboarding_completed) || Boolean(fields.stage) || Boolean(fields.passion) || Boolean(fields.cv_text);
       setOnboardingDone(completed);
     } catch {
       setOnboardingDone(true); // on error, skip onboarding
